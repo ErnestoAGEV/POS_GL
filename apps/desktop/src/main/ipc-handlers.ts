@@ -299,6 +299,35 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
     }
   );
 
+  // ── Inventory ─────────────────────────────────────────────────────────
+  ipcMain.handle("inventory:products", async (_event, query?: string) => {
+    if (query && query.trim()) {
+      return db
+        .select()
+        .from(schema.productos)
+        .where(
+          or(
+            like(schema.productos.nombre, `%${query}%`),
+            like(schema.productos.sku, `%${query}%`)
+          )
+        )
+        .limit(100)
+        .all();
+    }
+    return db.select().from(schema.productos).limit(100).all();
+  });
+
+  ipcMain.handle("inventory:stock-alerts", async () => {
+    return db
+      .select()
+      .from(schema.productos)
+      .where(eq(schema.productos.activo, true))
+      .all()
+      .then((products) =>
+        products.filter((p) => p.stockMinimo > 0)
+      );
+  });
+
   // ── Sync ──────────────────────────────────────────────────────────────
   ipcMain.handle("sync:status", async () => {
     return { connected: syncService?.isConnected() ?? false };

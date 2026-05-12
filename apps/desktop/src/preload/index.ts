@@ -40,6 +40,11 @@ const api = {
       }>;
     }) => ipcRenderer.invoke("ventas:create", sale),
   },
+  inventory: {
+    products: (query?: string) =>
+      ipcRenderer.invoke("inventory:products", query),
+    stockAlerts: () => ipcRenderer.invoke("inventory:stock-alerts"),
+  },
   sync: {
     status: () => ipcRenderer.invoke("sync:status"),
     flush: () => ipcRenderer.invoke("sync:flush"),
