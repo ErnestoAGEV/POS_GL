@@ -68,6 +68,29 @@ const api = {
     }) => ipcRenderer.invoke("clients:update", id, data),
     purchases: (clienteId: number) => ipcRenderer.invoke("clients:purchases", clienteId),
   },
+  cortes: {
+    abrir: (data: { terminalId: number; efectivoInicial: number }) =>
+      ipcRenderer.invoke("cortes:abrir", data),
+    activo: (terminalId: number) =>
+      ipcRenderer.invoke("cortes:activo", terminalId),
+    cerrar: (id: number, data: {
+      tipo: string;
+      efectivoDeclarado: number;
+      efectivoSistema: number;
+      totalVentas: number;
+      totalEfectivo: number;
+      totalTarjeta: number;
+      totalTransferencia: number;
+      totalOtros: number;
+    }) => ipcRenderer.invoke("cortes:cerrar", id, data),
+    movimiento: (corteId: number, data: {
+      tipo: string;
+      monto: number;
+      concepto: string;
+    }) => ipcRenderer.invoke("cortes:movimiento", corteId, data),
+    list: (terminalId: number) =>
+      ipcRenderer.invoke("cortes:list", terminalId),
+  },
   inventory: {
     products: (query?: string) =>
       ipcRenderer.invoke("inventory:products", query),

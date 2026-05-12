@@ -90,6 +90,40 @@ sqlite.exec(`
     sync_status TEXT NOT NULL DEFAULT 'pendiente'
   );
 
+  CREATE TABLE IF NOT EXISTS cortes_caja (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    terminal_id INTEGER NOT NULL,
+    usuario_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL DEFAULT 'parcial',
+    efectivo_inicial REAL NOT NULL DEFAULT 0,
+    efectivo_sistema REAL NOT NULL DEFAULT 0,
+    efectivo_declarado REAL,
+    diferencia REAL,
+    total_ventas REAL NOT NULL DEFAULT 0,
+    total_efectivo REAL NOT NULL DEFAULT 0,
+    total_tarjeta REAL NOT NULL DEFAULT 0,
+    total_transferencia REAL NOT NULL DEFAULT 0,
+    total_otros REAL NOT NULL DEFAULT 0,
+    fecha_apertura TEXT NOT NULL,
+    fecha_cierre TEXT,
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS movimientos_caja (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    corte_id INTEGER NOT NULL REFERENCES cortes_caja(id),
+    tipo TEXT NOT NULL,
+    monto REAL NOT NULL,
+    concepto TEXT NOT NULL,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente'
+  );
+
   CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -464,6 +498,131 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
       .then((products) =>
         products.filter((p) => p.stockMinimo > 0)
       );
+  });
+
+  // ── Cash Cuts ────────────────────────────────────────────────────────
+  ipcMain.handle(
+    "cortes:abrir",
+    async (_event, data: { terminalId: number; efectivoInicial: number }) => {
+      // Check for open cut
+      const open = db
+        .select()
+        .from(schema.cortesCaja)
+        .where(eq(schema.cortesCaja.terminalId, data.terminalId))
+        .all()
+        .filter((c) => !c.fechaCierre);
+
+      if (open.length > 0) {
+        return { error: "Ya existe un corte abierto" };
+      }
+
+      const result = db
+        .insert(schema.cortesCaja)
+        .values({
+          terminalId: data.terminalId,
+          usuarioId: 0,
+          tipo: "parcial",
+          efectivoInicial: data.efectivoInicial,
+          fechaApertura: new Date().toISOString(),
+          syncId: randomUUID(),
+          syncStatus: "pendiente",
+        })
+        .run();
+
+      return { id: Number(result.lastInsertRowid) };
+    }
+  );
+
+  ipcMain.handle("cortes:activo", async (_event, terminalId: number) => {
+    const cortes = db
+      .select()
+      .from(schema.cortesCaja)
+      .where(eq(schema.cortesCaja.terminalId, terminalId))
+      .all()
+      .filter((c) => !c.fechaCierre);
+
+    if (cortes.length === 0) return null;
+
+    const corte = cortes[0];
+    const movimientos = db
+      .select()
+      .from(schema.movimientosCaja)
+      .where(eq(schema.movimientosCaja.corteId, corte.id))
+      .all();
+
+    return { ...corte, movimientos };
+  });
+
+  ipcMain.handle(
+    "cortes:cerrar",
+    async (
+      _event,
+      id: number,
+      data: {
+        tipo: string;
+        efectivoDeclarado: number;
+        efectivoSistema: number;
+        totalVentas: number;
+        totalEfectivo: number;
+        totalTarjeta: number;
+        totalTransferencia: number;
+        totalOtros: number;
+      }
+    ) => {
+      const diferencia = data.efectivoDeclarado - data.efectivoSistema;
+
+      db.update(schema.cortesCaja)
+        .set({
+          tipo: data.tipo as any,
+          efectivoSistema: data.efectivoSistema,
+          efectivoDeclarado: data.efectivoDeclarado,
+          diferencia,
+          totalVentas: data.totalVentas,
+          totalEfectivo: data.totalEfectivo,
+          totalTarjeta: data.totalTarjeta,
+          totalTransferencia: data.totalTransferencia,
+          totalOtros: data.totalOtros,
+          fechaCierre: new Date().toISOString(),
+          syncStatus: "pendiente",
+        })
+        .where(eq(schema.cortesCaja.id, id))
+        .run();
+
+      return { success: true };
+    }
+  );
+
+  ipcMain.handle(
+    "cortes:movimiento",
+    async (
+      _event,
+      corteId: number,
+      data: { tipo: string; monto: number; concepto: string }
+    ) => {
+      const result = db
+        .insert(schema.movimientosCaja)
+        .values({
+          corteId,
+          tipo: data.tipo as any,
+          monto: data.monto,
+          concepto: data.concepto,
+          fecha: new Date().toISOString(),
+          syncId: randomUUID(),
+          syncStatus: "pendiente",
+        })
+        .run();
+
+      return { id: Number(result.lastInsertRowid) };
+    }
+  );
+
+  ipcMain.handle("cortes:list", async (_event, terminalId: number) => {
+    return db
+      .select()
+      .from(schema.cortesCaja)
+      .where(eq(schema.cortesCaja.terminalId, terminalId))
+      .all()
+      .sort((a, b) => (b.fechaApertura > a.fechaApertura ? 1 : -1));
   });
 
   // ── Sync ──────────────────────────────────────────────────────────────
