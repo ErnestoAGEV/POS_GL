@@ -8,6 +8,7 @@ import { CartSummary } from "../components/pos/CartSummary";
 import { PaymentModal } from "../components/pos/PaymentModal";
 import { InventoryPage } from "./InventoryPage";
 import { ClientsPage } from "./ClientsPage";
+import { CashCutsPage } from "./CashCutsPage";
 import { useCartStore } from "../stores/cart-store";
 import { useAuthStore } from "../stores/auth-store";
 import { useAppStore } from "../stores/app-store";
@@ -85,7 +86,9 @@ export function PosPage() {
 
           {activeSection === "clients" && <ClientsPage />}
 
-          {activeSection !== "pos" && activeSection !== "inventory" && activeSection !== "clients" && (
+          {activeSection === "cashcuts" && <CashCutsPage />}
+
+          {activeSection !== "pos" && activeSection !== "inventory" && activeSection !== "clients" && activeSection !== "cashcuts" && (
             <div className="flex-1 flex items-center justify-center text-pos-muted">
               <p className="text-lg">
                 Modulo "{activeSection}" — disponible en fases posteriores
