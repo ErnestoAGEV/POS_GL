@@ -124,6 +124,7 @@ export async function productosRoutes(app: FastifyInstance) {
         })
         .returning();
 
+      app.io.emit("product:created", created);
       return reply.status(201).send(created);
     }
   );
@@ -170,6 +171,7 @@ export async function productosRoutes(app: FastifyInstance) {
         .where(eq(schema.productos.id, id))
         .returning();
 
+      app.io.emit("product:updated", updated);
       return updated;
     }
   );
@@ -197,6 +199,7 @@ export async function productosRoutes(app: FastifyInstance) {
         .set({ activo: false })
         .where(eq(schema.productos.id, id));
 
+      app.io.emit("product:deleted", { id });
       return reply.status(204).send();
     }
   );
