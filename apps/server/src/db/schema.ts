@@ -206,3 +206,73 @@ export const pagos = pgTable("pagos", {
   referencia: text("referencia"),
   ...syncColumns,
 });
+
+export const compras = pgTable("compras", {
+  id: serial("id").primaryKey(),
+  proveedorId: integer("proveedor_id")
+    .notNull()
+    .references(() => proveedores.id),
+  sucursalId: integer("sucursal_id")
+    .notNull()
+    .references(() => sucursales.id),
+  usuarioId: integer("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  total: real("total").notNull(),
+  estado: text("estado", { enum: ["pendiente", "recibida", "cancelada"] })
+    .notNull()
+    .default("pendiente"),
+  notas: text("notas"),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  fechaRecepcion: timestamp("fecha_recepcion", { withTimezone: true }),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const compraDetalles = pgTable("compra_detalles", {
+  id: serial("id").primaryKey(),
+  compraId: integer("compra_id")
+    .notNull()
+    .references(() => compras.id),
+  productoId: integer("producto_id")
+    .notNull()
+    .references(() => productos.id),
+  cantidad: real("cantidad").notNull(),
+  costoUnitario: real("costo_unitario").notNull(),
+  subtotal: real("subtotal").notNull(),
+  ...syncColumns,
+});
+
+export const traspasos = pgTable("traspasos", {
+  id: serial("id").primaryKey(),
+  sucursalOrigenId: integer("sucursal_origen_id")
+    .notNull()
+    .references(() => sucursales.id),
+  sucursalDestinoId: integer("sucursal_destino_id")
+    .notNull()
+    .references(() => sucursales.id),
+  usuarioId: integer("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  estado: text("estado", {
+    enum: ["pendiente", "en_transito", "recibido", "cancelado"],
+  })
+    .notNull()
+    .default("pendiente"),
+  notas: text("notas"),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const traspasoDetalles = pgTable("traspaso_detalles", {
+  id: serial("id").primaryKey(),
+  traspasoId: integer("traspaso_id")
+    .notNull()
+    .references(() => traspasos.id),
+  productoId: integer("producto_id")
+    .notNull()
+    .references(() => productos.id),
+  cantidad: real("cantidad").notNull(),
+  ...syncColumns,
+});
