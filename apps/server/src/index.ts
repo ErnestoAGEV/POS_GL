@@ -12,6 +12,7 @@ import { categoriasRoutes } from "./routes/categorias.routes.js";
 import { productosRoutes } from "./routes/productos.routes.js";
 import { clientesRoutes } from "./routes/clientes.routes.js";
 import { proveedoresRoutes } from "./routes/proveedores.routes.js";
+import { ventasRoutes } from "./routes/ventas.routes.js";
 
 const app = Fastify({
   logger: true,
@@ -33,6 +34,7 @@ await app.register(categoriasRoutes);
 await app.register(productosRoutes);
 await app.register(clientesRoutes);
 await app.register(proveedoresRoutes);
+await app.register(ventasRoutes);
 
 app.get("/health", async () => {
   return { status: "ok", timestamp: new Date().toISOString() };

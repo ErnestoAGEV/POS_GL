@@ -144,3 +144,65 @@ export const proveedores = pgTable("proveedores", {
   ...syncColumns,
   ...timestampColumns,
 });
+
+export const ventas = pgTable("ventas", {
+  id: serial("id").primaryKey(),
+  folio: text("folio").unique(),
+  terminalId: integer("terminal_id")
+    .notNull()
+    .references(() => terminales.id),
+  usuarioId: integer("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  clienteId: integer("cliente_id").references(() => clientes.id),
+  subtotal: real("subtotal").notNull(),
+  descuento: real("descuento").notNull().default(0),
+  iva: real("iva").notNull(),
+  total: real("total").notNull(),
+  tipo: text("tipo", { enum: ["normal", "apartado", "cotizacion"] })
+    .notNull()
+    .default("normal"),
+  estado: text("estado", {
+    enum: ["completada", "cancelada", "en_espera", "cotizacion"],
+  })
+    .notNull()
+    .default("completada"),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const ventaDetalles = pgTable("venta_detalles", {
+  id: serial("id").primaryKey(),
+  ventaId: integer("venta_id")
+    .notNull()
+    .references(() => ventas.id),
+  productoId: integer("producto_id")
+    .notNull()
+    .references(() => productos.id),
+  cantidad: real("cantidad").notNull(),
+  precioUnitario: real("precio_unitario").notNull(),
+  descuento: real("descuento").notNull().default(0),
+  subtotal: real("subtotal").notNull(),
+  ...syncColumns,
+});
+
+export const pagos = pgTable("pagos", {
+  id: serial("id").primaryKey(),
+  ventaId: integer("venta_id")
+    .notNull()
+    .references(() => ventas.id),
+  formaPago: text("forma_pago", {
+    enum: [
+      "efectivo",
+      "tarjeta",
+      "transferencia",
+      "credito",
+      "vale_despensa",
+      "tarjeta_regalo",
+    ],
+  }).notNull(),
+  monto: real("monto").notNull(),
+  referencia: text("referencia"),
+  ...syncColumns,
+});
