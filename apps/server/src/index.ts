@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import socketioPlugin from "./plugins/socketio.js";
 import { config } from "./config.js";
 import errorHandler from "./plugins/error-handler.js";
 import authPlugin from "./plugins/auth.js";
@@ -19,6 +20,8 @@ const app = Fastify({
 await app.register(cors, {
   origin: true,
 });
+
+await app.register(socketioPlugin);
 
 await app.register(errorHandler);
 await app.register(authPlugin);
