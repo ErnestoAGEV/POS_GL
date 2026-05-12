@@ -89,6 +89,25 @@ sqlite.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     sync_status TEXT NOT NULL DEFAULT 'pendiente'
   );
+
+  CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    telefono TEXT,
+    email TEXT,
+    rfc TEXT,
+    razon_social TEXT,
+    regimen_fiscal TEXT,
+    uso_cfdi TEXT,
+    domicilio_fiscal TEXT,
+    limite_credito REAL NOT NULL DEFAULT 0,
+    saldo_credito REAL NOT NULL DEFAULT 0,
+    activo INTEGER NOT NULL DEFAULT 1,
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 const db = drizzle(sqlite, { schema });
@@ -298,6 +317,125 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
       return { id: ventaId, folio, syncId: ventaSyncId };
     }
   );
+
+  // ── Clients ──────────────────────────────────────────────────────────
+  ipcMain.handle("clients:list", async (_event, query?: string) => {
+    if (query && query.trim()) {
+      return db
+        .select()
+        .from(schema.clientes)
+        .where(
+          or(
+            like(schema.clientes.nombre, `%${query}%`),
+            like(schema.clientes.rfc, `%${query}%`),
+            like(schema.clientes.telefono, `%${query}%`)
+          )
+        )
+        .limit(100)
+        .all();
+    }
+    return db
+      .select()
+      .from(schema.clientes)
+      .where(eq(schema.clientes.activo, true))
+      .limit(100)
+      .all();
+  });
+
+  ipcMain.handle("clients:get", async (_event, id: number) => {
+    return db
+      .select()
+      .from(schema.clientes)
+      .where(eq(schema.clientes.id, id))
+      .limit(1)
+      .all()
+      .then((rows) => rows[0] || null);
+  });
+
+  ipcMain.handle(
+    "clients:create",
+    async (
+      _event,
+      data: {
+        nombre: string;
+        telefono?: string;
+        email?: string;
+        rfc?: string;
+        razonSocial?: string;
+        regimenFiscal?: string;
+        usoCfdi?: string;
+        domicilioFiscal?: string;
+        limiteCredito?: number;
+      }
+    ) => {
+      const result = db
+        .insert(schema.clientes)
+        .values({
+          nombre: data.nombre,
+          telefono: data.telefono || null,
+          email: data.email || null,
+          rfc: data.rfc || null,
+          razonSocial: data.razonSocial || null,
+          regimenFiscal: data.regimenFiscal || null,
+          usoCfdi: data.usoCfdi || null,
+          domicilioFiscal: data.domicilioFiscal || null,
+          limiteCredito: data.limiteCredito ?? 0,
+          syncId: randomUUID(),
+          syncStatus: "pendiente",
+        })
+        .run();
+      return { id: Number(result.lastInsertRowid) };
+    }
+  );
+
+  ipcMain.handle(
+    "clients:update",
+    async (
+      _event,
+      id: number,
+      data: {
+        nombre?: string;
+        telefono?: string;
+        email?: string;
+        rfc?: string;
+        razonSocial?: string;
+        regimenFiscal?: string;
+        usoCfdi?: string;
+        domicilioFiscal?: string;
+        limiteCredito?: number;
+        activo?: boolean;
+      }
+    ) => {
+      const values: Record<string, any> = {};
+      if (data.nombre !== undefined) values.nombre = data.nombre;
+      if (data.telefono !== undefined) values.telefono = data.telefono;
+      if (data.email !== undefined) values.email = data.email;
+      if (data.rfc !== undefined) values.rfc = data.rfc;
+      if (data.razonSocial !== undefined) values.razonSocial = data.razonSocial;
+      if (data.regimenFiscal !== undefined) values.regimenFiscal = data.regimenFiscal;
+      if (data.usoCfdi !== undefined) values.usoCfdi = data.usoCfdi;
+      if (data.domicilioFiscal !== undefined) values.domicilioFiscal = data.domicilioFiscal;
+      if (data.limiteCredito !== undefined) values.limiteCredito = data.limiteCredito;
+      if (data.activo !== undefined) values.activo = data.activo;
+      values.syncStatus = "pendiente";
+
+      db.update(schema.clientes)
+        .set(values)
+        .where(eq(schema.clientes.id, id))
+        .run();
+
+      return { success: true };
+    }
+  );
+
+  ipcMain.handle("clients:purchases", async (_event, clienteId: number) => {
+    return db
+      .select()
+      .from(schema.ventas)
+      .where(eq(schema.ventas.clienteId, clienteId))
+      .limit(50)
+      .all();
+  });
 
   // ── Inventory ─────────────────────────────────────────────────────────
   ipcMain.handle("inventory:products", async (_event, query?: string) => {

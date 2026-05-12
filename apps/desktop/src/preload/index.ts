@@ -40,6 +40,34 @@ const api = {
       }>;
     }) => ipcRenderer.invoke("ventas:create", sale),
   },
+  clients: {
+    list: (query?: string) => ipcRenderer.invoke("clients:list", query),
+    get: (id: number) => ipcRenderer.invoke("clients:get", id),
+    create: (data: {
+      nombre: string;
+      telefono?: string;
+      email?: string;
+      rfc?: string;
+      razonSocial?: string;
+      regimenFiscal?: string;
+      usoCfdi?: string;
+      domicilioFiscal?: string;
+      limiteCredito?: number;
+    }) => ipcRenderer.invoke("clients:create", data),
+    update: (id: number, data: {
+      nombre?: string;
+      telefono?: string;
+      email?: string;
+      rfc?: string;
+      razonSocial?: string;
+      regimenFiscal?: string;
+      usoCfdi?: string;
+      domicilioFiscal?: string;
+      limiteCredito?: number;
+      activo?: boolean;
+    }) => ipcRenderer.invoke("clients:update", id, data),
+    purchases: (clienteId: number) => ipcRenderer.invoke("clients:purchases", clienteId),
+  },
   inventory: {
     products: (query?: string) =>
       ipcRenderer.invoke("inventory:products", query),
