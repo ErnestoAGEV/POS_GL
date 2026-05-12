@@ -1,0 +1,25 @@
+{
+  "name": "@posgl/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Electron dev - configured in Phase 3'",
+    "build": "tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@posgl/shared": "workspace:*",
+    "drizzle-orm": "^0.44.0",
+    "better-sqlite3": "^11.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "drizzle-kit": "^0.30.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0"
+  }
+}
