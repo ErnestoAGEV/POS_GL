@@ -2,40 +2,22 @@ import { useState } from "react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { useAuthStore } from "../stores/auth-store";
-import { LogIn } from "lucide-react";
+import { LogIn, Server } from "lucide-react";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [showServer, setShowServer] = useState(false);
   const login = useAuthStore((s) => s.login);
+  const loginError = useAuthStore((s) => s.loginError);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const serverUrl = useAuthStore((s) => s.serverUrl);
+  const setServerUrl = useAuthStore((s) => s.setServerUrl);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-
-    // For Phase 3, we do a simple local auth
-    // In Phase 4 (sync), this will authenticate against the server
-    if (username === "admin" && password === "admin123") {
-      login({
-        id: 1,
-        nombre: "Administrador",
-        username: "admin",
-        rol: "admin",
-        sucursalId: 1,
-      });
-    } else if (username && password) {
-      // Accept any non-empty credentials for demo
-      login({
-        id: 2,
-        nombre: username,
-        username,
-        rol: "cajero",
-        sucursalId: 1,
-      });
-    } else {
-      setError("Ingresa usuario y contraseña");
-    }
+    if (!username || !password) return;
+    await login(username, password);
   };
 
   return (
@@ -56,26 +38,51 @@ export function LoginPage() {
             autoFocus
           />
           <Input
-            label="Contraseña"
+            label="Contrasena"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="********"
           />
 
-          {error && (
-            <p className="text-pos-red text-sm text-center">{error}</p>
+          {loginError && (
+            <p className="text-pos-red text-sm text-center">{loginError}</p>
           )}
 
-          <Button type="submit" variant="primary" size="lg" className="w-full flex items-center justify-center gap-2">
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full flex items-center justify-center gap-2"
+            disabled={isLoading}
+          >
             <LogIn size={20} />
-            Iniciar Sesión
+            {isLoading ? "Conectando..." : "Iniciar Sesion"}
           </Button>
         </form>
 
-        <p className="text-pos-muted text-xs text-center mt-6">
-          v0.1.0 — Fase 3
-        </p>
+        <button
+          type="button"
+          onClick={() => setShowServer(!showServer)}
+          className="w-full mt-4 flex items-center justify-center gap-1 text-pos-muted text-xs hover:text-pos-text cursor-pointer transition-colors"
+        >
+          <Server size={12} />
+          Configurar servidor
+        </button>
+
+        {showServer && (
+          <div className="mt-3">
+            <Input
+              label="URL del Servidor"
+              type="text"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              placeholder="http://localhost:3000"
+            />
+          </div>
+        )}
+
+        <p className="text-pos-muted text-xs text-center mt-6">v0.1.0</p>
       </div>
     </div>
   );
