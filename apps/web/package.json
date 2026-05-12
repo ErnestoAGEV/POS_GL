@@ -1,0 +1,17 @@
+{
+  "name": "@posgl/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Next.js dev - configured in Phase 11'",
+    "build": "echo 'Next.js build - configured in Phase 11'",
+    "clean": "rm -rf .next"
+  },
+  "dependencies": {
+    "@posgl/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
