@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -32,6 +32,13 @@ export function PaymentModal({ isOpen, onClose, onComplete }: PaymentModalProps)
 
   const [selectedMethod, setSelectedMethod] = useState("efectivo");
   const [amountReceived, setAmountReceived] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setAmountReceived("");
+      setSelectedMethod("efectivo");
+    }
+  }, [isOpen]);
 
   const received = parseFloat(amountReceived) || 0;
   const change = received - total;
@@ -86,6 +93,7 @@ export function PaymentModal({ isOpen, onClose, onComplete }: PaymentModalProps)
               label="Monto recibido"
               type="number"
               step="0.01"
+              min="0"
               value={amountReceived}
               onChange={(e) => setAmountReceived(e.target.value)}
               placeholder="0.00"

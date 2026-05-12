@@ -43,7 +43,9 @@ export function CartTable() {
                 <div className="flex items-center justify-center gap-2">
                   <button
                     onClick={() => updateQuantity(item.productoId, item.cantidad - 1)}
-                    className="w-7 h-7 rounded-lg bg-pos-active hover:bg-slate-600 flex items-center justify-center text-pos-muted hover:text-pos-text cursor-pointer transition-colors"
+                    disabled={item.cantidad <= 1}
+                    aria-label={`Reducir cantidad de ${item.nombre}`}
+                    className="w-7 h-7 rounded-lg bg-pos-active hover:bg-slate-600 flex items-center justify-center text-pos-muted hover:text-pos-text cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Minus size={14} />
                   </button>
@@ -52,6 +54,7 @@ export function CartTable() {
                   </span>
                   <button
                     onClick={() => updateQuantity(item.productoId, item.cantidad + 1)}
+                    aria-label={`Aumentar cantidad de ${item.nombre}`}
                     className="w-7 h-7 rounded-lg bg-pos-active hover:bg-slate-600 flex items-center justify-center text-pos-muted hover:text-pos-text cursor-pointer transition-colors"
                   >
                     <Plus size={14} />
@@ -67,6 +70,7 @@ export function CartTable() {
               <td className="py-3 px-2">
                 <button
                   onClick={() => removeItem(item.productoId)}
+                  aria-label={`Eliminar ${item.nombre} del carrito`}
                   className="text-pos-muted hover:text-pos-red cursor-pointer transition-colors p-1"
                 >
                   <Trash2 size={16} />

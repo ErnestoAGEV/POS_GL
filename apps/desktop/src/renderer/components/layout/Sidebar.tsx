@@ -40,6 +40,8 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
         <button
           key={item.id}
           onClick={() => onNavigate(item.id)}
+          aria-label={item.label}
+          aria-current={active === item.id ? "page" : undefined}
           className={`
             w-16 h-16 flex flex-col items-center justify-center gap-1 rounded-xl cursor-pointer
             transition-colors duration-150
@@ -59,6 +61,7 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
 
       <button
         onClick={logout}
+        aria-label="Cerrar sesión"
         className="w-16 h-16 flex flex-col items-center justify-center gap-1 rounded-xl cursor-pointer text-pos-muted hover:text-pos-red hover:bg-pos-active transition-colors duration-150"
       >
         <LogOut size={20} />

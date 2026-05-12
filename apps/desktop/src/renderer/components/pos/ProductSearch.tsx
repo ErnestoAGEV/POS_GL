@@ -7,13 +7,26 @@ export function ProductSearch() {
   const [results, setResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const reqId = useRef(0);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addItem = useCartStore((s) => s.addItem);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const handleSearch = async (value: string) => {
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, []);
+
+  const handleSearch = (value: string) => {
     setQuery(value);
     if (value.length === 0) {
       setResults([]);
@@ -21,32 +34,42 @@ export function ProductSearch() {
       return;
     }
 
-    const products = await window.api.products.search(value);
-    setResults(products);
-    setShowResults(products.length > 0);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
+      reqId.current += 1;
+      const currentReqId = reqId.current;
+      const products = await window.api.products.search(value);
+      if (currentReqId !== reqId.current) return;
+      setResults(products);
+      setShowResults(products.length > 0);
+    }, 250);
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && query.trim()) {
-      const product = await window.api.products.getByBarcode(query.trim());
-      if (product) {
-        addItem(product);
+    try {
+      if (e.key === "Enter" && query.trim()) {
+        const product = await window.api.products.getByBarcode(query.trim());
+        if (product) {
+          addItem(product);
+          setQuery("");
+          setResults([]);
+          setShowResults(false);
+          return;
+        }
+        if (results.length > 0) {
+          addItem(results[0]);
+          setQuery("");
+          setResults([]);
+          setShowResults(false);
+        }
+      }
+      if (e.key === "Escape") {
         setQuery("");
         setResults([]);
         setShowResults(false);
-        return;
       }
-      if (results.length > 0) {
-        addItem(results[0]);
-        setQuery("");
-        setResults([]);
-        setShowResults(false);
-      }
-    }
-    if (e.key === "Escape") {
-      setQuery("");
-      setResults([]);
-      setShowResults(false);
+    } catch (err) {
+      console.error("handleKeyDown error:", err);
     }
   };
 
@@ -59,7 +82,7 @@ export function ProductSearch() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-pos-muted" size={20} />
         <input
