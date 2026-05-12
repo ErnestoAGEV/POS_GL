@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { config } from "./config.js";
 import errorHandler from "./plugins/error-handler.js";
 import authPlugin from "./plugins/auth.js";
+import { authRoutes } from "./routes/auth.routes.js";
 
 const app = Fastify({
   logger: true,
@@ -14,6 +15,7 @@ await app.register(cors, {
 
 await app.register(errorHandler);
 await app.register(authPlugin);
+await app.register(authRoutes);
 
 app.get("/health", async () => {
   return { status: "ok", timestamp: new Date().toISOString() };

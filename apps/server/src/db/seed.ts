@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import { db, schema } from "./index.js";
 
 async function seed() {
@@ -23,12 +24,14 @@ async function seed() {
 
   console.log(`Created terminal: ${terminal.nombre} (id: ${terminal.id})`);
 
+  const passwordHash = await bcrypt.hash("admin123", 10);
+
   const [admin] = await db
     .insert(schema.usuarios)
     .values({
       nombre: "Administrador",
       username: "admin",
-      passwordHash: "$2b$10$placeholder_hash_change_on_first_login",
+      passwordHash,
       rol: "admin",
       sucursalId: sucursal.id,
     })
