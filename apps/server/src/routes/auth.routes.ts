@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { db, schema } from "../db/index.js";
 import { config } from "../config.js";
 import type { JwtPayload } from "../plugins/auth.js";
@@ -56,9 +56,10 @@ export async function authRoutes(app: FastifyInstance) {
       sucursalId: user.sucursalId,
     };
 
-    const token = jwt.sign(payload, config.jwtSecret, {
-      expiresIn: config.jwtExpiresIn,
-    });
+    const signOptions: SignOptions = {
+      expiresIn: config.jwtExpiresIn as SignOptions["expiresIn"],
+    };
+    const token = jwt.sign(payload, config.jwtSecret, signOptions);
 
     return {
       token,
