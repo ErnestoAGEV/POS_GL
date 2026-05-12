@@ -15,7 +15,7 @@ import {
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: (pagos: Array<{ formaPago: string; monto: number; referencia?: string }>) => void;
 }
 
 const paymentMethods = [
@@ -44,7 +44,7 @@ export function PaymentModal({ isOpen, onClose, onComplete }: PaymentModalProps)
   const change = received - total;
 
   const handleComplete = () => {
-    onComplete();
+    onComplete([{ formaPago: selectedMethod, monto: total }]);
     setAmountReceived("");
     setSelectedMethod("efectivo");
   };

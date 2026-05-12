@@ -7,6 +7,8 @@ import { CartTable } from "../components/pos/CartTable";
 import { CartSummary } from "../components/pos/CartSummary";
 import { PaymentModal } from "../components/pos/PaymentModal";
 import { useCartStore } from "../stores/cart-store";
+import { useAuthStore } from "../stores/auth-store";
+import { useAppStore } from "../stores/app-store";
 import { useHotkeys } from "../hooks/useHotkeys";
 
 export function PosPage() {
@@ -14,6 +16,8 @@ export function PosPage() {
   const [showPayment, setShowPayment] = useState(false);
   const clear = useCartStore((s) => s.clear);
   const items = useCartStore((s) => s.items);
+  const user = useAuthStore((s) => s.user);
+  const terminalId = useAppStore((s) => s.terminalId);
 
   const hotkeys = useMemo(
     () => ({
@@ -32,7 +36,27 @@ export function PosPage() {
 
   useHotkeys(hotkeys);
 
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = async (pagos: Array<{ formaPago: string; monto: number; referencia?: string }>) => {
+    const cartItems = useCartStore.getState().items;
+
+    await window.api.ventas.create({
+      terminalId,
+      usuarioId: user?.id ?? 0,
+      subtotal: useCartStore.getState().getSubtotal(),
+      descuento: useCartStore.getState().getDiscountTotal(),
+      iva: useCartStore.getState().getIva(),
+      total: useCartStore.getState().getTotal(),
+      items: cartItems.map((item) => ({
+        productoId: item.productoId,
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        descuento: item.descuento,
+        subtotal: item.subtotal,
+      })),
+      pagos,
+    });
+
     clear();
     setShowPayment(false);
   };

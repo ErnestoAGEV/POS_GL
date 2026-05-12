@@ -3,6 +3,7 @@ import { Store, Monitor, User, Clock } from "lucide-react";
 import { useAuthStore } from "../../stores/auth-store";
 import { useAppStore } from "../../stores/app-store";
 import { formatTime } from "../../lib/format";
+import { SyncIndicator } from "./SyncIndicator";
 
 export function Navbar() {
   const user = useAuthStore((s) => s.user);
@@ -35,6 +36,7 @@ export function Navbar() {
           <span className="text-pos-text">{user?.nombre || "Sin usuario"}</span>
           <span className="text-xs bg-pos-active px-2 py-0.5 rounded">{user?.rol}</span>
         </div>
+        <SyncIndicator />
         <div className="flex items-center gap-2">
           <Clock size={16} />
           <span className="tabular-nums">{time}</span>
