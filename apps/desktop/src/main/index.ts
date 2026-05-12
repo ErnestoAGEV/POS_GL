@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { join } from "path";
-import { registerIpcHandlers } from "./ipc-handlers.js";
+import { registerIpcHandlers, setMainWindow } from "./ipc-handlers.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -19,6 +19,8 @@ function createWindow() {
     autoHideMenuBar: true,
     show: false,
   });
+
+  setMainWindow(mainWindow);
 
   mainWindow.on("ready-to-show", () => {
     mainWindow?.show();
