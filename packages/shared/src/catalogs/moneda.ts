@@ -8,3 +8,4 @@ export const MONEDA_SAT: MonedaSat[] = [
   { clave: "USD", descripcion: "Dólar americano" },
   { clave: "EUR", descripcion: "Euro" },
 ];
+
