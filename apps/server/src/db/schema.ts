@@ -276,3 +276,41 @@ export const traspasoDetalles = pgTable("traspaso_detalles", {
   cantidad: real("cantidad").notNull(),
   ...syncColumns,
 });
+
+export const cortesCaja = pgTable("cortes_caja", {
+  id: serial("id").primaryKey(),
+  terminalId: integer("terminal_id")
+    .notNull()
+    .references(() => terminales.id),
+  usuarioId: integer("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  tipo: text("tipo", { enum: ["parcial", "final"] }).notNull(),
+  efectivoInicial: real("efectivo_inicial").notNull().default(0),
+  efectivoSistema: real("efectivo_sistema").notNull().default(0),
+  efectivoDeclarado: real("efectivo_declarado"),
+  diferencia: real("diferencia"),
+  totalVentas: real("total_ventas").notNull().default(0),
+  totalEfectivo: real("total_efectivo").notNull().default(0),
+  totalTarjeta: real("total_tarjeta").notNull().default(0),
+  totalTransferencia: real("total_transferencia").notNull().default(0),
+  totalOtros: real("total_otros").notNull().default(0),
+  fechaApertura: timestamp("fecha_apertura", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  fechaCierre: timestamp("fecha_cierre", { withTimezone: true }),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const movimientosCaja = pgTable("movimientos_caja", {
+  id: serial("id").primaryKey(),
+  corteId: integer("corte_id")
+    .notNull()
+    .references(() => cortesCaja.id),
+  tipo: text("tipo", { enum: ["entrada", "salida"] }).notNull(),
+  monto: real("monto").notNull(),
+  concepto: text("concepto").notNull(),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+});
