@@ -150,6 +150,40 @@ const api = {
       limit?: number;
     }) => ipcRenderer.invoke("bitacora:list", filters),
   },
+  ticket: {
+    print: (data: any) => ipcRenderer.invoke("ticket:print", data),
+    preview: (data: any) => ipcRenderer.invoke("ticket:preview", data),
+    config: (config: { type: string; interface: string; width: number } | null) =>
+      ipcRenderer.invoke("ticket:config", config),
+    getConfig: () => ipcRenderer.invoke("ticket:get-config"),
+  },
+  ventasEspera: {
+    hold: (data: {
+      nombre: string;
+      terminalId: number;
+      usuarioId: number;
+      clienteId?: number;
+      items: any[];
+    }) => ipcRenderer.invoke("ventas-espera:hold", data),
+    list: (terminalId: number) => ipcRenderer.invoke("ventas-espera:list", terminalId),
+    recall: (id: number) => ipcRenderer.invoke("ventas-espera:recall", id),
+    delete: (id: number) => ipcRenderer.invoke("ventas-espera:delete", id),
+  },
+  ventasDetail: {
+    get: (ventaId: number) => ipcRenderer.invoke("ventas:get-detail", ventaId),
+    searchByFolio: (folio: string) => ipcRenderer.invoke("ventas:search-by-folio", folio),
+    recent: (limit?: number) => ipcRenderer.invoke("ventas:recent", limit),
+  },
+  devoluciones: {
+    create: (data: {
+      ventaId: number;
+      usuarioId: number;
+      motivo: string;
+      items: any[];
+      total: number;
+    }) => ipcRenderer.invoke("devoluciones:create", data),
+    list: () => ipcRenderer.invoke("devoluciones:list"),
+  },
   sync: {
     status: () => ipcRenderer.invoke("sync:status"),
     flush: () => ipcRenderer.invoke("sync:flush"),

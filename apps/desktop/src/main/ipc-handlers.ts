@@ -9,6 +9,7 @@ import { join } from "path";
 import { app } from "electron";
 import { randomUUID } from "crypto";
 import { SyncService } from "./sync-service.js";
+import { printTicket, formatTicketText, setPrinterConfig, getPrinterConfig } from "./ticket-printer.js";
 
 const dbPath = join(app.getPath("userData"), "posgl.db");
 const sqlite = new Database(dbPath);
@@ -167,6 +168,30 @@ sqlite.exec(`
     entidad TEXT NOT NULL,
     entidad_id INTEGER,
     descripcion TEXT,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente'
+  );
+
+  CREATE TABLE IF NOT EXISTS ventas_espera (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL DEFAULT 'Venta en espera',
+    terminal_id INTEGER NOT NULL,
+    usuario_id INTEGER NOT NULL,
+    cliente_id INTEGER,
+    items_json TEXT NOT NULL,
+    fecha TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS devoluciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL REFERENCES ventas(id),
+    folio TEXT UNIQUE,
+    usuario_id INTEGER NOT NULL,
+    motivo TEXT NOT NULL,
+    total REAL NOT NULL,
+    items_json TEXT NOT NULL,
     fecha TEXT NOT NULL DEFAULT (datetime('now')),
     sync_id TEXT NOT NULL UNIQUE,
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -982,5 +1007,229 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
   ipcMain.handle("sync:flush", async () => {
     await syncService?.flushPendingSales();
     return { success: true };
+  });
+
+  // ── Ticket Printing ─────────────────────────────────────────────────
+  ipcMain.handle(
+    "ticket:print",
+    async (
+      _event,
+      data: {
+        folio: string;
+        fecha: string;
+        sucursal: string;
+        terminal: string;
+        cajero: string;
+        items: Array<{
+          nombre: string;
+          cantidad: number;
+          precioUnitario: number;
+          descuento: number;
+          subtotal: number;
+        }>;
+        subtotal: number;
+        descuento: number;
+        iva: number;
+        total: number;
+        pagos: Array<{ formaPago: string; monto: number }>;
+        cambio?: number;
+        clienteNombre?: string;
+      }
+    ) => {
+      return printTicket(data);
+    }
+  );
+
+  ipcMain.handle("ticket:preview", async (_event, data: any) => {
+    return formatTicketText(data);
+  });
+
+  ipcMain.handle(
+    "ticket:config",
+    async (
+      _event,
+      config: { type: "epson" | "star"; interface: string; width: number } | null
+    ) => {
+      setPrinterConfig(config);
+      return { success: true };
+    }
+  );
+
+  ipcMain.handle("ticket:get-config", async () => {
+    return getPrinterConfig();
+  });
+
+  // ── Ventas en Espera (Hold/Recall) ──────────────────────────────────
+  ipcMain.handle(
+    "ventas-espera:hold",
+    async (
+      _event,
+      data: {
+        nombre: string;
+        terminalId: number;
+        usuarioId: number;
+        clienteId?: number;
+        items: Array<{
+          productoId: number;
+          nombre: string;
+          cantidad: number;
+          precioUnitario: number;
+          descuento: number;
+          subtotal: number;
+          tasaIva: number;
+        }>;
+      }
+    ) => {
+      const stmt = sqlite.prepare(
+        `INSERT INTO ventas_espera (nombre, terminal_id, usuario_id, cliente_id, items_json, fecha)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      );
+      const result = stmt.run(
+        data.nombre || "Venta en espera",
+        data.terminalId,
+        data.usuarioId,
+        data.clienteId || null,
+        JSON.stringify(data.items),
+        new Date().toISOString()
+      );
+      return { id: Number(result.lastInsertRowid) };
+    }
+  );
+
+  ipcMain.handle("ventas-espera:list", async (_event, terminalId: number) => {
+    const rows = sqlite
+      .prepare(
+        `SELECT * FROM ventas_espera WHERE terminal_id = ? ORDER BY fecha DESC`
+      )
+      .all(terminalId) as any[];
+
+    return rows.map((r) => ({
+      ...r,
+      items: JSON.parse(r.items_json),
+    }));
+  });
+
+  ipcMain.handle("ventas-espera:recall", async (_event, id: number) => {
+    const row = sqlite
+      .prepare(`SELECT * FROM ventas_espera WHERE id = ?`)
+      .get(id) as any;
+
+    if (!row) return null;
+
+    sqlite.prepare(`DELETE FROM ventas_espera WHERE id = ?`).run(id);
+
+    return {
+      ...row,
+      items: JSON.parse(row.items_json),
+    };
+  });
+
+  ipcMain.handle("ventas-espera:delete", async (_event, id: number) => {
+    sqlite.prepare(`DELETE FROM ventas_espera WHERE id = ?`).run(id);
+    return { success: true };
+  });
+
+  // ── Reimpresion de Tickets ──────────────────────────────────────────
+  ipcMain.handle("ventas:get-detail", async (_event, ventaId: number) => {
+    const venta = sqlite
+      .prepare(`SELECT * FROM ventas WHERE id = ?`)
+      .get(ventaId) as any;
+
+    if (!venta) return null;
+
+    const items = sqlite
+      .prepare(
+        `SELECT vd.*, p.nombre FROM venta_detalles vd
+         JOIN productos p ON p.id = vd.producto_id
+         WHERE vd.venta_id = ?`
+      )
+      .all(ventaId) as any[];
+
+    const pagos = sqlite
+      .prepare(`SELECT * FROM pagos WHERE venta_id = ?`)
+      .all(ventaId) as any[];
+
+    return { ...venta, items, pagos };
+  });
+
+  ipcMain.handle("ventas:search-by-folio", async (_event, folio: string) => {
+    return sqlite
+      .prepare(`SELECT * FROM ventas WHERE folio LIKE ? ORDER BY fecha DESC LIMIT 20`)
+      .all(`%${folio}%`);
+  });
+
+  ipcMain.handle("ventas:recent", async (_event, limit = 10) => {
+    return sqlite
+      .prepare(
+        `SELECT * FROM ventas WHERE estado = 'completada' ORDER BY fecha DESC LIMIT ?`
+      )
+      .all(limit);
+  });
+
+  // ── Devoluciones ────────────────────────────────────────────────────
+  ipcMain.handle(
+    "devoluciones:create",
+    async (
+      _event,
+      data: {
+        ventaId: number;
+        usuarioId: number;
+        motivo: string;
+        items: Array<{
+          productoId: number;
+          nombre: string;
+          cantidad: number;
+          precioUnitario: number;
+          subtotal: number;
+        }>;
+        total: number;
+      }
+    ) => {
+      const folio = `DEV-${Date.now().toString(36).toUpperCase()}`;
+      const syncId = randomUUID();
+
+      const stmt = sqlite.prepare(
+        `INSERT INTO devoluciones (venta_id, folio, usuario_id, motivo, total, items_json, fecha, sync_id, sync_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')`
+      );
+
+      const result = stmt.run(
+        data.ventaId,
+        folio,
+        data.usuarioId,
+        data.motivo,
+        data.total,
+        JSON.stringify(data.items),
+        new Date().toISOString(),
+        syncId
+      );
+
+      // Mark original sale as cancelled if full return
+      const originalVenta = sqlite
+        .prepare(`SELECT total FROM ventas WHERE id = ?`)
+        .get(data.ventaId) as any;
+
+      if (originalVenta && Math.abs(originalVenta.total - data.total) < 0.01) {
+        sqlite
+          .prepare(
+            `UPDATE ventas SET estado = 'cancelada', sync_status = 'pendiente' WHERE id = ?`
+          )
+          .run(data.ventaId);
+      }
+
+      return { id: Number(result.lastInsertRowid), folio };
+    }
+  );
+
+  ipcMain.handle("devoluciones:list", async () => {
+    return sqlite
+      .prepare(
+        `SELECT d.*, v.folio as ventaFolio
+         FROM devoluciones d
+         JOIN ventas v ON v.id = d.venta_id
+         ORDER BY d.fecha DESC
+         LIMIT 100`
+      )
+      .all();
   });
 }

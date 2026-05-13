@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Navbar } from "../components/layout/Navbar";
 import { Sidebar } from "../components/layout/Sidebar";
 import { HotkeyBar } from "../components/layout/HotkeyBar";
@@ -14,6 +14,9 @@ import { SettingsPage } from "./SettingsPage";
 import { InvoicesPage } from "./InvoicesPage";
 import { PromosPage } from "./PromosPage";
 import { BitacoraPage } from "./BitacoraPage";
+import { HeldSalesModal } from "../components/pos/HeldSalesModal";
+import { ReprintModal } from "../components/pos/ReprintModal";
+import { ReturnModal } from "../components/pos/ReturnModal";
 import { useCartStore } from "../stores/cart-store";
 import { useAuthStore } from "../stores/auth-store";
 import { useAppStore } from "../stores/app-store";
@@ -22,10 +25,35 @@ import { useHotkeys } from "../hooks/useHotkeys";
 export function PosPage() {
   const [activeSection, setActiveSection] = useState("pos");
   const [showPayment, setShowPayment] = useState(false);
+  const [showHeldSales, setShowHeldSales] = useState(false);
+  const [showReprint, setShowReprint] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
   const clear = useCartStore((s) => s.clear);
   const items = useCartStore((s) => s.items);
   const user = useAuthStore((s) => s.user);
   const terminalId = useAppStore((s) => s.terminalId);
+
+  const handleHoldSale = useCallback(async () => {
+    const cartItems = useCartStore.getState().items;
+    if (cartItems.length === 0) return;
+
+    await window.api.ventasEspera.hold({
+      nombre: `Venta ${new Date().toLocaleTimeString()}`,
+      terminalId,
+      usuarioId: user?.id ?? 0,
+      items: cartItems.map((item) => ({
+        productoId: item.productoId,
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        descuento: item.descuento,
+        subtotal: item.subtotal,
+        tasaIva: item.tasaIva,
+      })),
+    });
+
+    clear();
+  }, [terminalId, user?.id, clear]);
 
   const hotkeys = useMemo(
     () => ({
@@ -35,25 +63,51 @@ export function PosPage() {
         );
         input?.focus();
       },
+      F5: () => {
+        if (items.length > 0) handleHoldSale();
+      },
+      F6: () => setShowHeldSales(true),
+      F7: () => setShowReprint(true),
+      F9: () => setShowReturn(true),
       F12: () => {
         if (items.length > 0) setShowPayment(true);
       },
     }),
-    [items.length]
+    [items.length, handleHoldSale]
   );
 
   useHotkeys(hotkeys);
 
+  const handleRecallSale = (recalledItems: any[]) => {
+    clear();
+    for (const item of recalledItems) {
+      useCartStore.getState().addItem({
+        id: item.productoId,
+        nombre: item.nombre,
+        precioVenta: item.precioUnitario,
+        tasaIva: item.tasaIva ?? 0.16,
+      });
+      if (item.cantidad > 1) {
+        useCartStore.getState().updateQuantity(item.productoId, item.cantidad);
+      }
+    }
+  };
+
   const handlePaymentComplete = async (pagos: Array<{ formaPago: string; monto: number; referencia?: string }>) => {
     const cartItems = useCartStore.getState().items;
 
-    await window.api.ventas.create({
+    const subtotal = useCartStore.getState().getSubtotal();
+    const descuento = useCartStore.getState().getDiscountTotal();
+    const iva = useCartStore.getState().getIva();
+    const total = useCartStore.getState().getTotal();
+
+    const saleResult = await window.api.ventas.create({
       terminalId,
       usuarioId: user?.id ?? 0,
-      subtotal: useCartStore.getState().getSubtotal(),
-      descuento: useCartStore.getState().getDiscountTotal(),
-      iva: useCartStore.getState().getIva(),
-      total: useCartStore.getState().getTotal(),
+      subtotal,
+      descuento,
+      iva,
+      total,
       items: cartItems.map((item) => ({
         productoId: item.productoId,
         nombre: item.nombre,
@@ -63,6 +117,29 @@ export function PosPage() {
         subtotal: item.subtotal,
       })),
       pagos,
+    });
+
+    // Auto-print ticket
+    const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+    window.api.ticket.print({
+      folio: saleResult.folio,
+      fecha: new Date().toISOString(),
+      sucursal: "Sucursal 1",
+      terminal: `Terminal ${terminalId}`,
+      cajero: user?.nombre ?? "Cajero",
+      items: cartItems.map((item) => ({
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        descuento: item.descuento,
+        subtotal: item.subtotal,
+      })),
+      subtotal,
+      descuento,
+      iva,
+      total,
+      pagos: pagos.map((p) => ({ formaPago: p.formaPago, monto: p.monto })),
+      cambio: totalPagado > total ? totalPagado - total : 0,
     });
 
     clear();
@@ -111,6 +188,27 @@ export function PosPage() {
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
         onComplete={handlePaymentComplete}
+      />
+
+      <HeldSalesModal
+        isOpen={showHeldSales}
+        onClose={() => setShowHeldSales(false)}
+        terminalId={terminalId}
+        onRecall={handleRecallSale}
+      />
+
+      <ReprintModal
+        isOpen={showReprint}
+        onClose={() => setShowReprint(false)}
+        sucursal="Sucursal 1"
+        terminal={`Terminal ${terminalId}`}
+        cajero={user?.nombre ?? "Cajero"}
+      />
+
+      <ReturnModal
+        isOpen={showReturn}
+        onClose={() => setShowReturn(false)}
+        usuarioId={user?.id ?? 0}
       />
     </div>
   );

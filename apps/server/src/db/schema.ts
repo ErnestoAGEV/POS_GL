@@ -353,6 +353,23 @@ export const promociones = pgTable("promociones", {
   ...timestampColumns,
 });
 
+export const devoluciones = pgTable("devoluciones", {
+  id: serial("id").primaryKey(),
+  ventaId: integer("venta_id")
+    .notNull()
+    .references(() => ventas.id),
+  folio: text("folio").unique(),
+  usuarioId: integer("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  motivo: text("motivo").notNull(),
+  total: real("total").notNull(),
+  itemsJson: text("items_json").notNull(),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
 export const bitacora = pgTable("bitacora", {
   id: serial("id").primaryKey(),
   usuarioId: integer("usuario_id")
