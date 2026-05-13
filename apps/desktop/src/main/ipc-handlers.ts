@@ -625,6 +625,85 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
       .sort((a, b) => (b.fechaApertura > a.fechaApertura ? 1 : -1));
   });
 
+  // ── Reports ─────────────────────────────────────────────────────────
+  ipcMain.handle(
+    "reports:sales-summary",
+    async (_event, dateFrom: string, dateTo: string) => {
+      const summary = sqlite
+        .prepare(
+          `SELECT
+            COUNT(*) as totalVentas,
+            COALESCE(SUM(total), 0) as totalMonto,
+            COALESCE(SUM(descuento), 0) as totalDescuento,
+            COALESCE(AVG(total), 0) as ticketPromedio
+          FROM ventas
+          WHERE estado = 'completada'
+            AND fecha >= ? AND fecha <= ?`
+        )
+        .get(dateFrom, dateTo) as any;
+
+      const byDay = sqlite
+        .prepare(
+          `SELECT
+            date(fecha) as dia,
+            COUNT(*) as ventas,
+            COALESCE(SUM(total), 0) as total
+          FROM ventas
+          WHERE estado = 'completada'
+            AND fecha >= ? AND fecha <= ?
+          GROUP BY date(fecha)
+          ORDER BY dia`
+        )
+        .all(dateFrom, dateTo);
+
+      return { summary, byDay };
+    }
+  );
+
+  ipcMain.handle(
+    "reports:top-products",
+    async (_event, dateFrom: string, dateTo: string, limit = 20) => {
+      return sqlite
+        .prepare(
+          `SELECT
+            vd.producto_id as productoId,
+            p.nombre,
+            p.sku,
+            SUM(vd.cantidad) as cantidadTotal,
+            SUM(vd.subtotal) as montoTotal
+          FROM venta_detalles vd
+          JOIN ventas v ON v.id = vd.venta_id
+          JOIN productos p ON p.id = vd.producto_id
+          WHERE v.estado = 'completada'
+            AND v.fecha >= ? AND v.fecha <= ?
+          GROUP BY vd.producto_id
+          ORDER BY cantidadTotal DESC
+          LIMIT ?`
+        )
+        .all(dateFrom, dateTo, limit);
+    }
+  );
+
+  ipcMain.handle(
+    "reports:by-payment-method",
+    async (_event, dateFrom: string, dateTo: string) => {
+      return sqlite
+        .prepare(
+          `SELECT
+            p.forma_pago as formaPago,
+            COUNT(*) as cantidad,
+            COALESCE(SUM(p.monto), 0) as total
+          FROM pagos p
+          JOIN ventas v ON v.id = p.venta_id
+          WHERE v.estado = 'completada'
+            AND v.fecha >= ? AND v.fecha <= ?
+          GROUP BY p.forma_pago
+          ORDER BY total DESC`
+        )
+        .all(dateFrom, dateTo);
+    }
+  );
+
   // ── Sync ──────────────────────────────────────────────────────────────
   ipcMain.handle("sync:status", async () => {
     return { connected: syncService?.isConnected() ?? false };

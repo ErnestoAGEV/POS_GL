@@ -91,6 +91,14 @@ const api = {
     list: (terminalId: number) =>
       ipcRenderer.invoke("cortes:list", terminalId),
   },
+  reports: {
+    salesSummary: (dateFrom: string, dateTo: string) =>
+      ipcRenderer.invoke("reports:sales-summary", dateFrom, dateTo),
+    topProducts: (dateFrom: string, dateTo: string, limit?: number) =>
+      ipcRenderer.invoke("reports:top-products", dateFrom, dateTo, limit),
+    byPaymentMethod: (dateFrom: string, dateTo: string) =>
+      ipcRenderer.invoke("reports:by-payment-method", dateFrom, dateTo),
+  },
   inventory: {
     products: (query?: string) =>
       ipcRenderer.invoke("inventory:products", query),
