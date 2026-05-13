@@ -91,6 +91,10 @@ const api = {
     list: (terminalId: number) =>
       ipcRenderer.invoke("cortes:list", terminalId),
   },
+  config: {
+    appInfo: () => ipcRenderer.invoke("config:app-info"),
+    dbStats: () => ipcRenderer.invoke("config:db-stats"),
+  },
   reports: {
     salesSummary: (dateFrom: string, dateTo: string) =>
       ipcRenderer.invoke("reports:sales-summary", dateFrom, dateTo),

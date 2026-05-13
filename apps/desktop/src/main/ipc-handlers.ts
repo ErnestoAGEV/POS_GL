@@ -704,6 +704,39 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
     }
   );
 
+  // ── Config ──────────────────────────────────────────────────────────
+  ipcMain.handle("config:app-info", async () => {
+    return {
+      version: app.getVersion(),
+      dbPath,
+      userDataPath: app.getPath("userData"),
+      platform: process.platform,
+      arch: process.arch,
+    };
+  });
+
+  ipcMain.handle("config:db-stats", async () => {
+    const productos = sqlite
+      .prepare("SELECT COUNT(*) as count FROM productos")
+      .get() as any;
+    const ventas = sqlite
+      .prepare("SELECT COUNT(*) as count FROM ventas")
+      .get() as any;
+    const clientes = sqlite
+      .prepare("SELECT COUNT(*) as count FROM clientes")
+      .get() as any;
+    const categorias = sqlite
+      .prepare("SELECT COUNT(*) as count FROM categorias")
+      .get() as any;
+
+    return {
+      productos: productos.count,
+      ventas: ventas.count,
+      clientes: clientes.count,
+      categorias: categorias.count,
+    };
+  });
+
   // ── Sync ──────────────────────────────────────────────────────────────
   ipcMain.handle("sync:status", async () => {
     return { connected: syncService?.isConnected() ?? false };
