@@ -124,6 +124,25 @@ sqlite.exec(`
     sync_status TEXT NOT NULL DEFAULT 'pendiente'
   );
 
+  CREATE TABLE IF NOT EXISTS facturas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_ids TEXT NOT NULL,
+    cliente_id INTEGER,
+    uuid_fiscal TEXT,
+    xml TEXT,
+    pdf TEXT,
+    tipo TEXT NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'timbrada',
+    serie_sat TEXT,
+    folio_sat TEXT,
+    total REAL NOT NULL DEFAULT 0,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -623,6 +642,86 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
       .where(eq(schema.cortesCaja.terminalId, terminalId))
       .all()
       .sort((a, b) => (b.fechaApertura > a.fechaApertura ? 1 : -1));
+  });
+
+  // ── Invoices ─────────────────────────────────────────────────────────
+  ipcMain.handle(
+    "facturas:create",
+    async (
+      _event,
+      data: {
+        ventaIds: number[];
+        clienteId: number;
+        tipo: string;
+        total: number;
+      }
+    ) => {
+      const uuidFiscal = randomUUID().toUpperCase();
+      const folioSat = `F-${Date.now().toString(36).toUpperCase()}`;
+
+      const result = db
+        .insert(schema.facturas)
+        .values({
+          ventaIds: JSON.stringify(data.ventaIds),
+          clienteId: data.clienteId,
+          uuidFiscal,
+          tipo: data.tipo as any,
+          estado: "timbrada",
+          serieSat: "A",
+          folioSat,
+          fecha: new Date().toISOString(),
+          syncId: randomUUID(),
+          syncStatus: "pendiente",
+        })
+        .run();
+
+      return {
+        id: Number(result.lastInsertRowid),
+        uuidFiscal,
+        folioSat,
+      };
+    }
+  );
+
+  ipcMain.handle("facturas:list", async () => {
+    const facturas = db
+      .select()
+      .from(schema.facturas)
+      .all()
+      .sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
+
+    // Enrich with client name
+    return facturas.map((f) => {
+      let clienteNombre = null;
+      if (f.clienteId) {
+        const cliente = db
+          .select()
+          .from(schema.clientes)
+          .where(eq(schema.clientes.id, f.clienteId))
+          .limit(1)
+          .all()[0];
+        clienteNombre = cliente?.nombre || null;
+      }
+      return { ...f, clienteNombre };
+    });
+  });
+
+  ipcMain.handle("facturas:cancel", async (_event, id: number) => {
+    db.update(schema.facturas)
+      .set({ estado: "cancelada" as any, syncStatus: "pendiente" })
+      .where(eq(schema.facturas.id, id))
+      .run();
+    return { success: true };
+  });
+
+  ipcMain.handle("facturas:recent-sales", async () => {
+    return db
+      .select()
+      .from(schema.ventas)
+      .where(eq(schema.ventas.estado, "completada" as any))
+      .limit(50)
+      .all()
+      .sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
   });
 
   // ── Reports ─────────────────────────────────────────────────────────

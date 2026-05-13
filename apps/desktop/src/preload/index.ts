@@ -91,6 +91,17 @@ const api = {
     list: (terminalId: number) =>
       ipcRenderer.invoke("cortes:list", terminalId),
   },
+  facturas: {
+    create: (data: {
+      ventaIds: number[];
+      clienteId: number;
+      tipo: string;
+      total: number;
+    }) => ipcRenderer.invoke("facturas:create", data),
+    list: () => ipcRenderer.invoke("facturas:list"),
+    cancel: (id: number) => ipcRenderer.invoke("facturas:cancel", id),
+    recentSales: () => ipcRenderer.invoke("facturas:recent-sales"),
+  },
   config: {
     appInfo: () => ipcRenderer.invoke("config:app-info"),
     dbStats: () => ipcRenderer.invoke("config:db-stats"),
