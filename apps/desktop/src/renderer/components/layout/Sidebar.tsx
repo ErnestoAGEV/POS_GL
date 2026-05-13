@@ -7,6 +7,8 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Tags,
+  ClipboardList,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/auth-store";
 
@@ -22,7 +24,9 @@ const items: SidebarItem[] = [
   { icon: <Users size={20} />, label: "Clientes", id: "clients" },
   { icon: <FileText size={20} />, label: "Facturas", id: "invoices" },
   { icon: <Scissors size={20} />, label: "Cortes", id: "cashcuts" },
+  { icon: <Tags size={20} />, label: "Promos", id: "promos" },
   { icon: <BarChart3 size={20} />, label: "Reportes", id: "reports" },
+  { icon: <ClipboardList size={20} />, label: "Bitacora", id: "bitacora" },
   { icon: <Settings size={20} />, label: "Config", id: "settings" },
 ];
 

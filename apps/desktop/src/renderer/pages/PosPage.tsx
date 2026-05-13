@@ -12,6 +12,8 @@ import { CashCutsPage } from "./CashCutsPage";
 import { ReportsPage } from "./ReportsPage";
 import { SettingsPage } from "./SettingsPage";
 import { InvoicesPage } from "./InvoicesPage";
+import { PromosPage } from "./PromosPage";
+import { BitacoraPage } from "./BitacoraPage";
 import { useCartStore } from "../stores/cart-store";
 import { useAuthStore } from "../stores/auth-store";
 import { useAppStore } from "../stores/app-store";
@@ -94,6 +96,10 @@ export function PosPage() {
           {activeSection === "reports" && <ReportsPage />}
 
           {activeSection === "invoices" && <InvoicesPage />}
+
+          {activeSection === "promos" && <PromosPage />}
+
+          {activeSection === "bitacora" && <BitacoraPage />}
 
           {activeSection === "settings" && <SettingsPage />}
         </main>

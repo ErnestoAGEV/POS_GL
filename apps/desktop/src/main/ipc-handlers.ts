@@ -143,6 +143,36 @@ sqlite.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS promociones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    tipo TEXT NOT NULL,
+    valor REAL NOT NULL,
+    precio_objetivo REAL,
+    producto_id INTEGER,
+    categoria_id INTEGER,
+    fecha_inicio TEXT NOT NULL,
+    fecha_fin TEXT NOT NULL,
+    activa INTEGER NOT NULL DEFAULT 1,
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS bitacora (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    accion TEXT NOT NULL,
+    entidad TEXT NOT NULL,
+    entidad_id INTEGER,
+    descripcion TEXT,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente'
+  );
+
   CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -643,6 +673,114 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
       .all()
       .sort((a, b) => (b.fechaApertura > a.fechaApertura ? 1 : -1));
   });
+
+  // ── Promociones ──────────────────────────────────────────────────────
+  ipcMain.handle("promos:list", async () => {
+    return db.select().from(schema.promociones).all();
+  });
+
+  ipcMain.handle("promos:active", async () => {
+    const now = new Date().toISOString();
+    return db
+      .select()
+      .from(schema.promociones)
+      .where(eq(schema.promociones.activa, true))
+      .all()
+      .filter((p) => p.fechaInicio <= now && p.fechaFin >= now);
+  });
+
+  ipcMain.handle(
+    "promos:create",
+    async (
+      _event,
+      data: {
+        nombre: string;
+        tipo: string;
+        valor: number;
+        precioObjetivo?: number;
+        productoId?: number;
+        categoriaId?: number;
+        fechaInicio: string;
+        fechaFin: string;
+      }
+    ) => {
+      const result = db
+        .insert(schema.promociones)
+        .values({
+          nombre: data.nombre,
+          tipo: data.tipo as any,
+          valor: data.valor,
+          precioObjetivo: data.precioObjetivo || null,
+          productoId: data.productoId || null,
+          categoriaId: data.categoriaId || null,
+          fechaInicio: data.fechaInicio,
+          fechaFin: data.fechaFin,
+          syncId: randomUUID(),
+          syncStatus: "pendiente",
+        })
+        .run();
+      return { id: Number(result.lastInsertRowid) };
+    }
+  );
+
+  ipcMain.handle("promos:toggle", async (_event, id: number, activa: boolean) => {
+    db.update(schema.promociones)
+      .set({ activa, syncStatus: "pendiente" })
+      .where(eq(schema.promociones.id, id))
+      .run();
+    return { success: true };
+  });
+
+  // ── Bitacora ────────────────────────────────────────────────────────
+  ipcMain.handle(
+    "bitacora:log",
+    async (
+      _event,
+      data: {
+        usuarioId: number;
+        accion: string;
+        entidad: string;
+        entidadId?: number;
+        descripcion?: string;
+      }
+    ) => {
+      const result = db
+        .insert(schema.bitacora)
+        .values({
+          usuarioId: data.usuarioId,
+          accion: data.accion,
+          entidad: data.entidad,
+          entidadId: data.entidadId || null,
+          descripcion: data.descripcion || null,
+          fecha: new Date().toISOString(),
+          syncId: randomUUID(),
+          syncStatus: "pendiente",
+        })
+        .run();
+      return { id: Number(result.lastInsertRowid) };
+    }
+  );
+
+  ipcMain.handle(
+    "bitacora:list",
+    async (_event, filters?: { accion?: string; entidad?: string; limit?: number }) => {
+      let query = db.select().from(schema.bitacora);
+
+      const results = query.all();
+
+      let filtered = results;
+      if (filters?.accion) {
+        filtered = filtered.filter((r) => r.accion === filters.accion);
+      }
+      if (filters?.entidad) {
+        filtered = filtered.filter((r) => r.entidad === filters.entidad);
+      }
+
+      filtered.sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
+
+      return filtered.slice(0, filters?.limit || 100);
+    }
+  );
 
   // ── Invoices ─────────────────────────────────────────────────────────
   ipcMain.handle(

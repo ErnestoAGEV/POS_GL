@@ -119,6 +119,37 @@ const api = {
       ipcRenderer.invoke("inventory:products", query),
     stockAlerts: () => ipcRenderer.invoke("inventory:stock-alerts"),
   },
+  promos: {
+    list: () => ipcRenderer.invoke("promos:list"),
+    active: () => ipcRenderer.invoke("promos:active"),
+    create: (data: {
+      nombre: string;
+      tipo: string;
+      valor: number;
+      precioObjetivo?: number;
+      productoId?: number;
+      categoriaId?: number;
+      fechaInicio: string;
+      fechaFin: string;
+    }) => ipcRenderer.invoke("promos:create", data),
+    toggle: (id: number, activa: boolean) =>
+      ipcRenderer.invoke("promos:toggle", id, activa),
+  },
+  bitacora: {
+    log: (data: {
+      accion: string;
+      entidad: string;
+      entidadId?: number;
+      descripcion?: string;
+    }) => ipcRenderer.invoke("bitacora:log", data),
+    list: (filters?: {
+      accion?: string;
+      entidad?: string;
+      desde?: string;
+      hasta?: string;
+      limit?: number;
+    }) => ipcRenderer.invoke("bitacora:list", filters),
+  },
   sync: {
     status: () => ipcRenderer.invoke("sync:status"),
     flush: () => ipcRenderer.invoke("sync:flush"),
