@@ -314,3 +314,24 @@ export const movimientosCaja = pgTable("movimientos_caja", {
   fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
   ...syncColumns,
 });
+
+export const facturas = pgTable("facturas", {
+  id: serial("id").primaryKey(),
+  ventaIds: text("venta_ids").notNull(),
+  clienteId: integer("cliente_id").references(() => clientes.id),
+  uuidFiscal: text("uuid_fiscal"),
+  xml: text("xml"),
+  pdf: text("pdf"),
+  tipo: text("tipo", {
+    enum: ["individual", "global", "nota_credito", "complemento"],
+  }).notNull(),
+  estado: text("estado", { enum: ["timbrada", "cancelada"] })
+    .notNull()
+    .default("timbrada"),
+  serieSat: text("serie_sat"),
+  folioSat: text("folio_sat"),
+  total: real("total").notNull().default(0),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+  ...timestampColumns,
+});
