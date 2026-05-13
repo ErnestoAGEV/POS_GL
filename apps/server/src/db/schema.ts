@@ -335,3 +335,33 @@ export const facturas = pgTable("facturas", {
   ...syncColumns,
   ...timestampColumns,
 });
+
+export const promociones = pgTable("promociones", {
+  id: serial("id").primaryKey(),
+  nombre: text("nombre").notNull(),
+  tipo: text("tipo", {
+    enum: ["2x1", "nxprecio", "porcentaje", "monto_fijo"],
+  }).notNull(),
+  valor: real("valor").notNull(),
+  precioObjetivo: real("precio_objetivo"),
+  productoId: integer("producto_id").references(() => productos.id),
+  categoriaId: integer("categoria_id").references(() => categorias.id),
+  fechaInicio: timestamp("fecha_inicio", { withTimezone: true }).notNull(),
+  fechaFin: timestamp("fecha_fin", { withTimezone: true }).notNull(),
+  activa: boolean("activa").notNull().default(true),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const bitacora = pgTable("bitacora", {
+  id: serial("id").primaryKey(),
+  usuarioId: integer("usuario_id")
+    .notNull()
+    .references(() => usuarios.id),
+  accion: text("accion").notNull(),
+  entidad: text("entidad").notNull(),
+  entidadId: integer("entidad_id"),
+  descripcion: text("descripcion"),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+});
