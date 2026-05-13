@@ -174,6 +174,31 @@ const api = {
     searchByFolio: (folio: string) => ipcRenderer.invoke("ventas:search-by-folio", folio),
     recent: (limit?: number) => ipcRenderer.invoke("ventas:recent", limit),
   },
+  apartados: {
+    create: (data: {
+      ventaId: number;
+      clienteId?: number;
+      enganche: number;
+      total: number;
+      fechaLimite?: string;
+    }) => ipcRenderer.invoke("apartados:create", data),
+    list: () => ipcRenderer.invoke("apartados:list"),
+    get: (id: number) => ipcRenderer.invoke("apartados:get", id),
+    abono: (id: number, data: { monto: number; formaPago: string }) =>
+      ipcRenderer.invoke("apartados:abono", id, data),
+    cancelar: (id: number) => ipcRenderer.invoke("apartados:cancelar", id),
+  },
+  tarjetas: {
+    create: (data: { codigo: string; saldo: number; clienteId?: number }) =>
+      ipcRenderer.invoke("tarjetas:create", data),
+    list: () => ipcRenderer.invoke("tarjetas:list"),
+    balance: (codigo: string) => ipcRenderer.invoke("tarjetas:balance", codigo),
+    cargar: (id: number, monto: number) =>
+      ipcRenderer.invoke("tarjetas:cargar", id, monto),
+    consumir: (id: number, monto: number, ventaId?: number) =>
+      ipcRenderer.invoke("tarjetas:consumir", id, monto, ventaId),
+    movimientos: (id: number) => ipcRenderer.invoke("tarjetas:movimientos", id),
+  },
   devoluciones: {
     create: (data: {
       ventaId: number;

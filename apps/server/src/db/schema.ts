@@ -353,6 +353,61 @@ export const promociones = pgTable("promociones", {
   ...timestampColumns,
 });
 
+export const apartados = pgTable("apartados", {
+  id: serial("id").primaryKey(),
+  ventaId: integer("venta_id")
+    .notNull()
+    .references(() => ventas.id),
+  clienteId: integer("cliente_id").references(() => clientes.id),
+  enganche: real("enganche").notNull(),
+  saldoPendiente: real("saldo_pendiente").notNull(),
+  total: real("total").notNull(),
+  estado: text("estado", {
+    enum: ["activo", "liquidado", "cancelado"],
+  })
+    .notNull()
+    .default("activo"),
+  fechaLimite: timestamp("fecha_limite", { withTimezone: true }),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const apartadoAbonos = pgTable("apartado_abonos", {
+  id: serial("id").primaryKey(),
+  apartadoId: integer("apartado_id")
+    .notNull()
+    .references(() => apartados.id),
+  monto: real("monto").notNull(),
+  formaPago: text("forma_pago", {
+    enum: ["efectivo", "tarjeta", "transferencia"],
+  }).notNull(),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+});
+
+export const tarjetasRegalo = pgTable("tarjetas_regalo", {
+  id: serial("id").primaryKey(),
+  codigo: text("codigo").notNull().unique(),
+  saldo: real("saldo").notNull().default(0),
+  clienteId: integer("cliente_id").references(() => clientes.id),
+  activa: boolean("activa").notNull().default(true),
+  ...syncColumns,
+  ...timestampColumns,
+});
+
+export const tarjetaRegaloMovimientos = pgTable("tarjeta_regalo_movimientos", {
+  id: serial("id").primaryKey(),
+  tarjetaId: integer("tarjeta_id")
+    .notNull()
+    .references(() => tarjetasRegalo.id),
+  tipo: text("tipo", { enum: ["carga", "consumo"] }).notNull(),
+  monto: real("monto").notNull(),
+  ventaId: integer("venta_id").references(() => ventas.id),
+  fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
+  ...syncColumns,
+});
+
 export const devoluciones = pgTable("devoluciones", {
   id: serial("id").primaryKey(),
   ventaId: integer("venta_id")

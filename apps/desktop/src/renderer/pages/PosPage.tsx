@@ -17,6 +17,9 @@ import { BitacoraPage } from "./BitacoraPage";
 import { HeldSalesModal } from "../components/pos/HeldSalesModal";
 import { ReprintModal } from "../components/pos/ReprintModal";
 import { ReturnModal } from "../components/pos/ReturnModal";
+import { ApartadoModal } from "../components/pos/ApartadoModal";
+import { ApartadosPage } from "./ApartadosPage";
+import { GiftCardsPage } from "./GiftCardsPage";
 import { useCartStore } from "../stores/cart-store";
 import { useAuthStore } from "../stores/auth-store";
 import { useAppStore } from "../stores/app-store";
@@ -28,6 +31,7 @@ export function PosPage() {
   const [showHeldSales, setShowHeldSales] = useState(false);
   const [showReprint, setShowReprint] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
+  const [showApartado, setShowApartado] = useState(false);
   const clear = useCartStore((s) => s.clear);
   const items = useCartStore((s) => s.items);
   const user = useAuthStore((s) => s.user);
@@ -69,6 +73,9 @@ export function PosPage() {
       F6: () => setShowHeldSales(true),
       F7: () => setShowReprint(true),
       F9: () => setShowReturn(true),
+      F10: () => {
+        if (items.length > 0) setShowApartado(true);
+      },
       F12: () => {
         if (items.length > 0) setShowPayment(true);
       },
@@ -174,6 +181,10 @@ export function PosPage() {
 
           {activeSection === "invoices" && <InvoicesPage />}
 
+          {activeSection === "apartados" && <ApartadosPage />}
+
+          {activeSection === "giftcards" && <GiftCardsPage />}
+
           {activeSection === "promos" && <PromosPage />}
 
           {activeSection === "bitacora" && <BitacoraPage />}
@@ -209,6 +220,40 @@ export function PosPage() {
         isOpen={showReturn}
         onClose={() => setShowReturn(false)}
         usuarioId={user?.id ?? 0}
+      />
+
+      <ApartadoModal
+        isOpen={showApartado}
+        onClose={() => setShowApartado(false)}
+        total={useCartStore.getState().getTotal()}
+        onConfirm={async (data) => {
+          const cartItems = useCartStore.getState().items;
+          const saleResult = await window.api.ventas.create({
+            terminalId,
+            usuarioId: user?.id ?? 0,
+            subtotal: useCartStore.getState().getSubtotal(),
+            descuento: useCartStore.getState().getDiscountTotal(),
+            iva: useCartStore.getState().getIva(),
+            total: useCartStore.getState().getTotal(),
+            items: cartItems.map((item) => ({
+              productoId: item.productoId,
+              nombre: item.nombre,
+              cantidad: item.cantidad,
+              precioUnitario: item.precioUnitario,
+              descuento: item.descuento,
+              subtotal: item.subtotal,
+            })),
+            pagos: [{ formaPago: "efectivo", monto: data.enganche }],
+          });
+          await window.api.apartados.create({
+            ventaId: saleResult.id,
+            enganche: data.enganche,
+            total: useCartStore.getState().getTotal(),
+            clienteId: data.clienteId,
+            fechaLimite: data.fechaLimite,
+          });
+          clear();
+        }}
       />
     </div>
   );

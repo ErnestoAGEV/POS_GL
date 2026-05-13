@@ -22,6 +22,8 @@ import { facturasRoutes } from "./routes/facturas.routes.js";
 import { promocionesRoutes } from "./routes/promociones.routes.js";
 import { bitacoraRoutes } from "./routes/bitacora.routes.js";
 import { devolucionesRoutes } from "./routes/devoluciones.routes.js";
+import { apartadosRoutes } from "./routes/apartados.routes.js";
+import { tarjetasRegaloRoutes } from "./routes/tarjetas-regalo.routes.js";
 
 const app = Fastify({
   logger: true,
@@ -53,6 +55,8 @@ await app.register(facturasRoutes);
 await app.register(promocionesRoutes);
 await app.register(bitacoraRoutes);
 await app.register(devolucionesRoutes);
+await app.register(apartadosRoutes);
+await app.register(tarjetasRegaloRoutes);
 
 app.get("/health", async () => {
   return { status: "ok", timestamp: new Date().toISOString() };

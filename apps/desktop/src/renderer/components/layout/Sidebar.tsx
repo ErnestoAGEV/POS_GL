@@ -9,6 +9,8 @@ import {
   LogOut,
   Tags,
   ClipboardList,
+  PackageCheck,
+  CreditCard,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/auth-store";
 
@@ -24,6 +26,8 @@ const items: SidebarItem[] = [
   { icon: <Users size={20} />, label: "Clientes", id: "clients" },
   { icon: <FileText size={20} />, label: "Facturas", id: "invoices" },
   { icon: <Scissors size={20} />, label: "Cortes", id: "cashcuts" },
+  { icon: <PackageCheck size={20} />, label: "Apartados", id: "apartados" },
+  { icon: <CreditCard size={20} />, label: "T. Regalo", id: "giftcards" },
   { icon: <Tags size={20} />, label: "Promos", id: "promos" },
   { icon: <BarChart3 size={20} />, label: "Reportes", id: "reports" },
   { icon: <ClipboardList size={20} />, label: "Bitacora", id: "bitacora" },

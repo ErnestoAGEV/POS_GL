@@ -174,6 +174,57 @@ sqlite.exec(`
     sync_status TEXT NOT NULL DEFAULT 'pendiente'
   );
 
+  CREATE TABLE IF NOT EXISTS apartados (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL REFERENCES ventas(id),
+    cliente_id INTEGER,
+    enganche REAL NOT NULL,
+    saldo_pendiente REAL NOT NULL,
+    total REAL NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'activo',
+    fecha_limite TEXT,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS apartado_abonos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    apartado_id INTEGER NOT NULL REFERENCES apartados(id),
+    monto REAL NOT NULL,
+    forma_pago TEXT NOT NULL,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente'
+  );
+
+  CREATE TABLE IF NOT EXISTS tarjetas_regalo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT NOT NULL UNIQUE,
+    saldo REAL NOT NULL DEFAULT 0,
+    cliente_id INTEGER,
+    activa INTEGER NOT NULL DEFAULT 1,
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS tarjeta_regalo_movimientos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tarjeta_id INTEGER NOT NULL REFERENCES tarjetas_regalo(id),
+    tipo TEXT NOT NULL,
+    monto REAL NOT NULL,
+    venta_id INTEGER,
+    fecha TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_id TEXT NOT NULL UNIQUE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sync_status TEXT NOT NULL DEFAULT 'pendiente'
+  );
+
   CREATE TABLE IF NOT EXISTS ventas_espera (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL DEFAULT 'Venta en espera',
@@ -1231,5 +1282,243 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
          LIMIT 100`
       )
       .all();
+  });
+
+  // ── Apartados ───────────────────────────────────────────────────────
+  ipcMain.handle(
+    "apartados:create",
+    async (
+      _event,
+      data: {
+        ventaId: number;
+        clienteId?: number;
+        enganche: number;
+        total: number;
+        fechaLimite?: string;
+      }
+    ) => {
+      const syncId = randomUUID();
+      const saldoPendiente = data.total - data.enganche;
+
+      const result = sqlite
+        .prepare(
+          `INSERT INTO apartados (venta_id, cliente_id, enganche, saldo_pendiente, total, estado, fecha_limite, fecha, sync_id, sync_status)
+           VALUES (?, ?, ?, ?, ?, 'activo', ?, ?, ?, 'pendiente')`
+        )
+        .run(
+          data.ventaId,
+          data.clienteId || null,
+          data.enganche,
+          saldoPendiente,
+          data.total,
+          data.fechaLimite || null,
+          new Date().toISOString(),
+          syncId
+        );
+
+      const apartadoId = Number(result.lastInsertRowid);
+
+      // Register enganche as first abono
+      sqlite
+        .prepare(
+          `INSERT INTO apartado_abonos (apartado_id, monto, forma_pago, fecha, sync_id, sync_status)
+           VALUES (?, ?, 'efectivo', ?, ?, 'pendiente')`
+        )
+        .run(apartadoId, data.enganche, new Date().toISOString(), randomUUID());
+
+      // Mark sale as apartado
+      sqlite
+        .prepare(`UPDATE ventas SET tipo = 'apartado', estado = 'en_espera', sync_status = 'pendiente' WHERE id = ?`)
+        .run(data.ventaId);
+
+      return { id: apartadoId, saldoPendiente };
+    }
+  );
+
+  ipcMain.handle("apartados:list", async () => {
+    return sqlite
+      .prepare(
+        `SELECT a.*, c.nombre as clienteNombre, v.folio as ventaFolio
+         FROM apartados a
+         LEFT JOIN clientes c ON c.id = a.cliente_id
+         JOIN ventas v ON v.id = a.venta_id
+         ORDER BY a.fecha DESC`
+      )
+      .all();
+  });
+
+  ipcMain.handle("apartados:get", async (_event, id: number) => {
+    const apartado = sqlite
+      .prepare(
+        `SELECT a.*, c.nombre as clienteNombre, v.folio as ventaFolio
+         FROM apartados a
+         LEFT JOIN clientes c ON c.id = a.cliente_id
+         JOIN ventas v ON v.id = a.venta_id
+         WHERE a.id = ?`
+      )
+      .get(id) as any;
+
+    if (!apartado) return null;
+
+    const abonos = sqlite
+      .prepare(`SELECT * FROM apartado_abonos WHERE apartado_id = ? ORDER BY fecha DESC`)
+      .all(id);
+
+    return { ...apartado, abonos };
+  });
+
+  ipcMain.handle(
+    "apartados:abono",
+    async (_event, id: number, data: { monto: number; formaPago: string }) => {
+      const apartado = sqlite
+        .prepare(`SELECT * FROM apartados WHERE id = ?`)
+        .get(id) as any;
+
+      if (!apartado || apartado.estado !== "activo") {
+        return { error: "Apartado no activo" };
+      }
+
+      sqlite
+        .prepare(
+          `INSERT INTO apartado_abonos (apartado_id, monto, forma_pago, fecha, sync_id, sync_status)
+           VALUES (?, ?, ?, ?, ?, 'pendiente')`
+        )
+        .run(id, data.monto, data.formaPago, new Date().toISOString(), randomUUID());
+
+      const nuevoSaldo = apartado.saldo_pendiente - data.monto;
+      const liquidado = nuevoSaldo <= 0;
+
+      sqlite
+        .prepare(`UPDATE apartados SET saldo_pendiente = ?, estado = ?, sync_status = 'pendiente' WHERE id = ?`)
+        .run(Math.max(0, nuevoSaldo), liquidado ? "liquidado" : "activo", id);
+
+      if (liquidado) {
+        sqlite
+          .prepare(`UPDATE ventas SET estado = 'completada', sync_status = 'pendiente' WHERE id = ?`)
+          .run(apartado.venta_id);
+      }
+
+      return { saldoPendiente: Math.max(0, nuevoSaldo), liquidado };
+    }
+  );
+
+  ipcMain.handle("apartados:cancelar", async (_event, id: number) => {
+    const apartado = sqlite
+      .prepare(`SELECT * FROM apartados WHERE id = ?`)
+      .get(id) as any;
+
+    if (!apartado || apartado.estado !== "activo") {
+      return { error: "Apartado no activo" };
+    }
+
+    sqlite
+      .prepare(`UPDATE apartados SET estado = 'cancelado', sync_status = 'pendiente' WHERE id = ?`)
+      .run(id);
+
+    sqlite
+      .prepare(`UPDATE ventas SET estado = 'cancelada', sync_status = 'pendiente' WHERE id = ?`)
+      .run(apartado.venta_id);
+
+    return { success: true };
+  });
+
+  // ── Tarjetas de Regalo ──────────────────────────────────────────────
+  ipcMain.handle(
+    "tarjetas:create",
+    async (_event, data: { codigo: string; saldo: number; clienteId?: number }) => {
+      const syncId = randomUUID();
+
+      const result = sqlite
+        .prepare(
+          `INSERT INTO tarjetas_regalo (codigo, saldo, cliente_id, activa, sync_id, sync_status)
+           VALUES (?, ?, ?, 1, ?, 'pendiente')`
+        )
+        .run(data.codigo, data.saldo, data.clienteId || null, syncId);
+
+      const tarjetaId = Number(result.lastInsertRowid);
+
+      sqlite
+        .prepare(
+          `INSERT INTO tarjeta_regalo_movimientos (tarjeta_id, tipo, monto, fecha, sync_id, sync_status)
+           VALUES (?, 'carga', ?, ?, ?, 'pendiente')`
+        )
+        .run(tarjetaId, data.saldo, new Date().toISOString(), randomUUID());
+
+      return { id: tarjetaId, codigo: data.codigo };
+    }
+  );
+
+  ipcMain.handle("tarjetas:list", async () => {
+    return sqlite
+      .prepare(`SELECT t.*, c.nombre as clienteNombre FROM tarjetas_regalo t LEFT JOIN clientes c ON c.id = t.cliente_id ORDER BY t.created_at DESC`)
+      .all();
+  });
+
+  ipcMain.handle("tarjetas:balance", async (_event, codigo: string) => {
+    const tarjeta = sqlite
+      .prepare(`SELECT * FROM tarjetas_regalo WHERE codigo = ?`)
+      .get(codigo) as any;
+
+    if (!tarjeta) return { error: "Tarjeta no encontrada" };
+    if (!tarjeta.activa) return { error: "Tarjeta inactiva" };
+
+    return { id: tarjeta.id, codigo: tarjeta.codigo, saldo: tarjeta.saldo };
+  });
+
+  ipcMain.handle(
+    "tarjetas:cargar",
+    async (_event, id: number, monto: number) => {
+      const tarjeta = sqlite
+        .prepare(`SELECT * FROM tarjetas_regalo WHERE id = ?`)
+        .get(id) as any;
+
+      if (!tarjeta) return { error: "Tarjeta no encontrada" };
+
+      const nuevoSaldo = tarjeta.saldo + monto;
+      sqlite
+        .prepare(`UPDATE tarjetas_regalo SET saldo = ?, sync_status = 'pendiente' WHERE id = ?`)
+        .run(nuevoSaldo, id);
+
+      sqlite
+        .prepare(
+          `INSERT INTO tarjeta_regalo_movimientos (tarjeta_id, tipo, monto, fecha, sync_id, sync_status)
+           VALUES (?, 'carga', ?, ?, ?, 'pendiente')`
+        )
+        .run(id, monto, new Date().toISOString(), randomUUID());
+
+      return { saldo: nuevoSaldo };
+    }
+  );
+
+  ipcMain.handle(
+    "tarjetas:consumir",
+    async (_event, id: number, monto: number, ventaId?: number) => {
+      const tarjeta = sqlite
+        .prepare(`SELECT * FROM tarjetas_regalo WHERE id = ?`)
+        .get(id) as any;
+
+      if (!tarjeta) return { error: "Tarjeta no encontrada" };
+      if (tarjeta.saldo < monto) return { error: "Saldo insuficiente" };
+
+      const nuevoSaldo = tarjeta.saldo - monto;
+      sqlite
+        .prepare(`UPDATE tarjetas_regalo SET saldo = ?, sync_status = 'pendiente' WHERE id = ?`)
+        .run(nuevoSaldo, id);
+
+      sqlite
+        .prepare(
+          `INSERT INTO tarjeta_regalo_movimientos (tarjeta_id, tipo, monto, venta_id, fecha, sync_id, sync_status)
+           VALUES (?, 'consumo', ?, ?, ?, ?, 'pendiente')`
+        )
+        .run(id, monto, ventaId || null, new Date().toISOString(), randomUUID());
+
+      return { saldo: nuevoSaldo };
+    }
+  );
+
+  ipcMain.handle("tarjetas:movimientos", async (_event, id: number) => {
+    return sqlite
+      .prepare(`SELECT * FROM tarjeta_regalo_movimientos WHERE tarjeta_id = ? ORDER BY fecha DESC`)
+      .all(id);
   });
 }
