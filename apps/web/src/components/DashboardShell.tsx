@@ -11,6 +11,9 @@ import {
   Truck,
   ArrowLeftRight,
   Warehouse,
+  UserCog,
+  Building2,
+  ContactRound,
 } from "lucide-react";
 import { getToken, setToken } from "@/lib/api";
 
@@ -22,6 +25,9 @@ const navItems = [
   { href: "/compras", icon: Truck, label: "Compras" },
   { href: "/traspasos", icon: ArrowLeftRight, label: "Traspasos" },
   { href: "/stock", icon: Warehouse, label: "Stock" },
+  { href: "/proveedores", icon: ContactRound, label: "Proveedores" },
+  { href: "/usuarios", icon: UserCog, label: "Usuarios" },
+  { href: "/sucursales", icon: Building2, label: "Sucursales" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

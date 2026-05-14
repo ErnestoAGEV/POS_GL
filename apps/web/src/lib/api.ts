@@ -75,7 +75,35 @@ export const api = {
       request<any>(`/clientes?page=${page}&limit=${limit}`),
   },
   sucursales: {
-    list: () => request<any>("/sucursales"),
+    list: (page = 1, limit = 50) =>
+      request<any>(`/sucursales?page=${page}&limit=${limit}`),
+    get: (id: number) => request<any>(`/sucursales/${id}`),
+    create: (data: any) =>
+      request<any>("/sucursales", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/sucursales/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/sucursales/${id}`, { method: "DELETE" }),
+  },
+  usuarios: {
+    list: (page = 1, limit = 50) =>
+      request<any>(`/usuarios?page=${page}&limit=${limit}`),
+    create: (data: any) =>
+      request<any>("/usuarios", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/usuarios/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/usuarios/${id}`, { method: "DELETE" }),
+  },
+  proveedores: {
+    list: (page = 1, limit = 50) =>
+      request<any>(`/proveedores?page=${page}&limit=${limit}`),
+    create: (data: any) =>
+      request<any>("/proveedores", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/proveedores/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/proveedores/${id}`, { method: "DELETE" }),
   },
   compras: {
     list: (page = 1, limit = 50, estado?: string) =>
