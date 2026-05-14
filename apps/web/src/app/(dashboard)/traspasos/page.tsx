@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeftRight, Download, Send, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeftRight, Download, Send, CheckCircle, XCircle, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -26,15 +26,53 @@ export default function TraspasosPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [sucMap, setSucMap] = useState<Record<number, string>>({});
+  const [sucList, setSucList] = useState<{ id: number; nombre: string }[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ sucursalOrigenId: "", sucursalDestinoId: "", notas: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    api.sucursales.list(1, 500).then((res) => {
+      const list = res.data || res;
+      setSucList(list);
+      const map: Record<number, string> = {};
+      for (const s of list) map[s.id] = s.nombre;
+      setSucMap(map);
+    }).catch(() => {});
+  }, []);
+
+  const loadTraspasos = () => {
     setLoading(true);
     api.traspasos
       .list(page, 50, filter || undefined)
       .then((res) => setTraspasos(res.data || []))
       .catch(() => setTraspasos([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadTraspasos();
   }, [page, filter]);
+
+  const handleCreateTraspaso = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await api.traspasos.create({
+        sucursalOrigenId: parseInt(form.sucursalOrigenId),
+        sucursalDestinoId: parseInt(form.sucursalDestinoId),
+        notas: form.notas || undefined,
+      });
+      setShowForm(false);
+      setForm({ sucursalOrigenId: "", sucursalDestinoId: "", notas: "" });
+      loadTraspasos();
+    } catch (e: any) {
+      setError(e.message || "Error al crear traspaso");
+    }
+    setSaving(false);
+  };
 
   const handleEnviar = async (id: number) => {
     await api.traspasos.enviar(id);
@@ -65,6 +103,13 @@ export default function TraspasosPage() {
           <h1 className="text-2xl font-bold text-pos-text">Traspasos</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setForm({ sucursalOrigenId: "", sucursalDestinoId: "", notas: "" }); setError(""); setShowForm(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
+          >
+            <Plus size={16} />
+            Nuevo Traspaso
+          </button>
           <select
             value={filter}
             onChange={(e) => { setFilter(e.target.value); setPage(1); }}
@@ -82,8 +127,8 @@ export default function TraspasosPage() {
                 exportToExcel(
                   traspasos.map((t) => ({
                     ID: t.id,
-                    "Sucursal Origen": t.sucursalOrigenId,
-                    "Sucursal Destino": t.sucursalDestinoId,
+                    "Sucursal Origen": sucMap[t.sucursalOrigenId] || `#${t.sucursalOrigenId}`,
+                    "Sucursal Destino": sucMap[t.sucursalDestinoId] || `#${t.sucursalDestinoId}`,
                     Estado: t.estado,
                     Fecha: new Date(t.fecha).toLocaleString(),
                     Notas: t.notas || "",
@@ -99,6 +144,32 @@ export default function TraspasosPage() {
           )}
         </div>
       </div>
+
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-pos-card border border-slate-700 rounded-2xl w-[450px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-pos-text font-semibold">Nuevo Traspaso</h2>
+              <button onClick={() => setShowForm(false)} className="text-pos-muted hover:text-pos-text cursor-pointer"><X size={20} /></button>
+            </div>
+            <div className="space-y-3">
+              <select value={form.sucursalOrigenId} onChange={(e) => setForm({ ...form, sucursalOrigenId: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm cursor-pointer">
+                <option value="">Sucursal origen *</option>
+                {sucList.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              </select>
+              <select value={form.sucursalDestinoId} onChange={(e) => setForm({ ...form, sucursalDestinoId: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm cursor-pointer">
+                <option value="">Sucursal destino *</option>
+                {sucList.filter((s) => String(s.id) !== form.sucursalOrigenId).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              </select>
+              <input placeholder="Notas (opcional)" value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm placeholder:text-pos-muted/50" />
+              {error && <p className="text-pos-red text-xs">{error}</p>}
+              <button onClick={handleCreateTraspaso} disabled={saving || !form.sucursalOrigenId || !form.sucursalDestinoId} className="w-full py-2 bg-pos-green text-white rounded-lg text-sm font-medium hover:bg-pos-green/80 disabled:opacity-50 cursor-pointer">
+                {saving ? "Creando..." : "Crear Traspaso"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">
         <table className="w-full">
@@ -127,8 +198,8 @@ export default function TraspasosPage() {
                 <tr key={t.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
                   <td className="p-3 text-pos-muted font-mono text-xs">#{t.id}</td>
                   <td className="p-3 text-pos-muted text-xs">{new Date(t.fecha).toLocaleDateString("es-MX")}</td>
-                  <td className="p-3 text-pos-text">Suc. #{t.sucursalOrigenId}</td>
-                  <td className="p-3 text-pos-text">Suc. #{t.sucursalDestinoId}</td>
+                  <td className="p-3 text-pos-text">{sucMap[t.sucursalOrigenId] || `Suc. #${t.sucursalOrigenId}`}</td>
+                  <td className="p-3 text-pos-text">{sucMap[t.sucursalDestinoId] || `Suc. #${t.sucursalDestinoId}`}</td>
                   <td className="p-3 text-center">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_STYLES[t.estado] || ""}`}>
                       {t.estado}

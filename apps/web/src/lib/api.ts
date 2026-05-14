@@ -63,16 +63,20 @@ export const api = {
       request<any>(`/reportes/metodos-pago?desde=${desde}&hasta=${hasta}`),
   },
   ventas: {
-    list: (page = 1, limit = 50) =>
-      request<any>(`/ventas?page=${page}&limit=${limit}`),
+    list: (page = 1, limit = 50, params?: { desde?: string; hasta?: string }) => {
+      let url = `/ventas?page=${page}&limit=${limit}`;
+      if (params?.desde) url += `&desde=${params.desde}`;
+      if (params?.hasta) url += `&hasta=${params.hasta}`;
+      return request<any>(url);
+    },
   },
   productos: {
-    list: (page = 1, limit = 50) =>
-      request<any>(`/productos?page=${page}&limit=${limit}`),
+    list: (page = 1, limit = 50, search?: string) =>
+      request<any>(`/productos?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`),
   },
   clientes: {
-    list: (page = 1, limit = 50) =>
-      request<any>(`/clientes?page=${page}&limit=${limit}`),
+    list: (page = 1, limit = 50, search?: string) =>
+      request<any>(`/clientes?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`),
   },
   sucursales: {
     list: (page = 1, limit = 50) =>

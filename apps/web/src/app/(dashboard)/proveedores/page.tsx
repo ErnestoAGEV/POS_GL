@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ContactRound, Plus, Download, X } from "lucide-react";
+import { ContactRound, Plus, Download, X, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -23,6 +23,7 @@ export default function ProveedoresPage() {
   const [form, setForm] = useState({ nombre: "", contacto: "", telefono: "", email: "", rfc: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadProveedores();
@@ -37,24 +38,43 @@ export default function ProveedoresPage() {
       .finally(() => setLoading(false));
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      await api.proveedores.create({
+      const data = {
         nombre: form.nombre,
         contacto: form.contacto || undefined,
         telefono: form.telefono || undefined,
         email: form.email || undefined,
         rfc: form.rfc || undefined,
-      });
+      };
+      if (editingId) {
+        await api.proveedores.update(editingId, data);
+      } else {
+        await api.proveedores.create(data);
+      }
       setShowForm(false);
+      setEditingId(null);
       setForm({ nombre: "", contacto: "", telefono: "", email: "", rfc: "" });
       loadProveedores();
     } catch (e: any) {
-      setError(e.message || "Error al crear proveedor");
+      setError(e.message || (editingId ? "Error al actualizar" : "Error al crear proveedor"));
     }
     setSaving(false);
+  };
+
+  const handleEdit = (p: Proveedor) => {
+    setForm({
+      nombre: p.nombre,
+      contacto: p.contacto || "",
+      telefono: p.telefono || "",
+      email: p.email || "",
+      rfc: p.rfc || "",
+    });
+    setEditingId(p.id);
+    setError("");
+    setShowForm(true);
   };
 
   const handleToggle = async (p: Proveedor) => {
@@ -73,7 +93,7 @@ export default function ProveedoresPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setForm({ nombre: "", contacto: "", telefono: "", email: "", rfc: "" }); setError(""); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
           >
             <Plus size={16} />
@@ -107,8 +127,8 @@ export default function ProveedoresPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-pos-card border border-slate-700 rounded-2xl w-[450px] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-pos-text font-semibold">Nuevo Proveedor</h2>
-              <button onClick={() => setShowForm(false)} className="text-pos-muted hover:text-pos-text cursor-pointer">
+              <h2 className="text-pos-text font-semibold">{editingId ? "Editar Proveedor" : "Nuevo Proveedor"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-pos-muted hover:text-pos-text cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -147,11 +167,11 @@ export default function ProveedoresPage() {
               />
               {error && <p className="text-pos-red text-xs">{error}</p>}
               <button
-                onClick={handleCreate}
+                onClick={handleSave}
                 disabled={saving || !form.nombre}
                 className="w-full py-2 bg-pos-green text-white rounded-lg text-sm font-medium hover:bg-pos-green/80 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "Creando..." : "Crear Proveedor"}
+                {saving ? "Guardando..." : editingId ? "Guardar Cambios" : "Crear Proveedor"}
               </button>
             </div>
           </div>
@@ -168,16 +188,17 @@ export default function ProveedoresPage() {
               <th className="p-3 font-medium">Email</th>
               <th className="p-3 font-medium">RFC</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-pos-muted text-sm">Cargando...</td>
+                <td colSpan={7} className="p-8 text-center text-pos-muted text-sm">Cargando...</td>
               </tr>
             ) : proveedores.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-pos-muted text-sm">No hay proveedores</td>
+                <td colSpan={7} className="p-8 text-center text-pos-muted text-sm">No hay proveedores</td>
               </tr>
             ) : (
               proveedores.map((p) => (
@@ -196,6 +217,16 @@ export default function ProveedoresPage() {
                     >
                       {p.activo ? "Activo" : "Inactivo"}
                     </button>
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg bg-pos-blue/20 text-pos-blue hover:bg-pos-blue/30 cursor-pointer" title="Editar">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={async () => { if (confirm("Eliminar proveedor?")) { await api.proveedores.delete(p.id); loadProveedores(); } }} className="p-1.5 rounded-lg bg-pos-red/20 text-pos-red hover:bg-pos-red/30 cursor-pointer" title="Eliminar">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

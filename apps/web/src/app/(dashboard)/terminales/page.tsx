@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Monitor, Plus, Download, X } from "lucide-react";
+import { Monitor, Plus, Download, X, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -27,6 +27,7 @@ export default function TerminalesPage() {
   const [form, setForm] = useState({ nombre: "", sucursalId: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadTerminales();
@@ -45,21 +46,37 @@ export default function TerminalesPage() {
       .finally(() => setLoading(false));
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      await api.terminales.create({
+      const data = {
         nombre: form.nombre,
         sucursalId: parseInt(form.sucursalId),
-      });
+      };
+      if (editingId) {
+        await api.terminales.update(editingId, data);
+      } else {
+        await api.terminales.create(data);
+      }
       setShowForm(false);
+      setEditingId(null);
       setForm({ nombre: "", sucursalId: "" });
       loadTerminales();
     } catch (e: any) {
-      setError(e.message || "Error al crear terminal");
+      setError(e.message || (editingId ? "Error al actualizar" : "Error al crear terminal"));
     }
     setSaving(false);
+  };
+
+  const handleEdit = (t: Terminal) => {
+    setForm({
+      nombre: t.nombre,
+      sucursalId: String(t.sucursalId),
+    });
+    setEditingId(t.id);
+    setError("");
+    setShowForm(true);
   };
 
   const handleToggle = async (t: Terminal) => {
@@ -81,7 +98,7 @@ export default function TerminalesPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setForm({ nombre: "", sucursalId: "" }); setError(""); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
           >
             <Plus size={16} />
@@ -112,8 +129,8 @@ export default function TerminalesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-pos-card border border-slate-700 rounded-2xl w-[400px] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-pos-text font-semibold">Nueva Terminal</h2>
-              <button onClick={() => setShowForm(false)} className="text-pos-muted hover:text-pos-text cursor-pointer">
+              <h2 className="text-pos-text font-semibold">{editingId ? "Editar Terminal" : "Nueva Terminal"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-pos-muted hover:text-pos-text cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -136,11 +153,11 @@ export default function TerminalesPage() {
               </select>
               {error && <p className="text-pos-red text-xs">{error}</p>}
               <button
-                onClick={handleCreate}
+                onClick={handleSave}
                 disabled={saving || !form.nombre || !form.sucursalId}
                 className="w-full py-2 bg-pos-green text-white rounded-lg text-sm font-medium hover:bg-pos-green/80 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "Creando..." : "Crear Terminal"}
+                {saving ? "Guardando..." : editingId ? "Guardar Cambios" : "Crear Terminal"}
               </button>
             </div>
           </div>
@@ -154,13 +171,14 @@ export default function TerminalesPage() {
               <th className="p-3 font-medium">Nombre</th>
               <th className="p-3 font-medium">Sucursal</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={3} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
             ) : terminales.length === 0 ? (
-              <tr><td colSpan={3} className="p-8 text-center text-pos-muted text-sm">No hay terminales</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-pos-muted text-sm">No hay terminales</td></tr>
             ) : (
               terminales.map((t) => (
                 <tr key={t.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
@@ -175,6 +193,16 @@ export default function TerminalesPage() {
                     >
                       {t.activa ? "Activa" : "Inactiva"}
                     </button>
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => handleEdit(t)} className="p-1.5 rounded-lg bg-pos-blue/20 text-pos-blue hover:bg-pos-blue/30 cursor-pointer" title="Editar">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={async () => { if (confirm("Eliminar terminal?")) { await api.terminales.delete(t.id); loadTerminales(); } }} className="p-1.5 rounded-lg bg-pos-red/20 text-pos-red hover:bg-pos-red/30 cursor-pointer" title="Eliminar">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

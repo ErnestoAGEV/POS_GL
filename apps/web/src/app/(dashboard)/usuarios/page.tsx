@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserCog, Plus, Download, X } from "lucide-react";
+import { UserCog, Plus, Download, X, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -15,14 +15,32 @@ interface Usuario {
   createdAt: string;
 }
 
+interface Sucursal {
+  id: number;
+  nombre: string;
+}
+
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ nombre: "", username: "", password: "", rol: "cajero", sucursalId: "1" });
+  const [form, setForm] = useState({ nombre: "", username: "", password: "", rol: "cajero", sucursalId: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [sucMap, setSucMap] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    api.sucursales.list(1, 500).then((res) => {
+      const list = res.data || res;
+      setSucursales(list);
+      const map: Record<number, string> = {};
+      for (const s of list) map[s.id] = s.nombre;
+      setSucMap(map);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadUsuarios();
@@ -37,24 +55,44 @@ export default function UsuariosPage() {
       .finally(() => setLoading(false));
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      await api.usuarios.create({
-        nombre: form.nombre,
-        username: form.username,
-        password: form.password,
-        rol: form.rol,
-        sucursalId: Number(form.sucursalId),
-      });
+      if (editingId) {
+        const data: any = { nombre: form.nombre, rol: form.rol, sucursalId: Number(form.sucursalId) };
+        if (form.password) data.password = form.password;
+        await api.usuarios.update(editingId, data);
+      } else {
+        await api.usuarios.create({
+          nombre: form.nombre,
+          username: form.username,
+          password: form.password,
+          rol: form.rol,
+          sucursalId: Number(form.sucursalId),
+        });
+      }
       setShowForm(false);
-      setForm({ nombre: "", username: "", password: "", rol: "cajero", sucursalId: "1" });
+      setEditingId(null);
+      setForm({ nombre: "", username: "", password: "", rol: "cajero", sucursalId: "" });
       loadUsuarios();
     } catch (e: any) {
-      setError(e.message || "Error al crear usuario");
+      setError(e.message || (editingId ? "Error al actualizar" : "Error al crear usuario"));
     }
     setSaving(false);
+  };
+
+  const handleEdit = (u: Usuario) => {
+    setForm({
+      nombre: u.nombre,
+      username: u.username,
+      password: "",
+      rol: u.rol,
+      sucursalId: String(u.sucursalId),
+    });
+    setEditingId(u.id);
+    setError("");
+    setShowForm(true);
   };
 
   const handleToggle = async (u: Usuario) => {
@@ -73,7 +111,7 @@ export default function UsuariosPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setForm({ nombre: "", username: "", password: "", rol: "cajero", sucursalId: "" }); setError(""); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
           >
             <Plus size={16} />
@@ -87,7 +125,7 @@ export default function UsuariosPage() {
                     Nombre: u.nombre,
                     Usuario: u.username,
                     Rol: u.rol,
-                    Sucursal: u.sucursalId,
+                    Sucursal: sucMap[u.sucursalId] || `#${u.sucursalId}`,
                     Estado: u.activo ? "Activo" : "Inactivo",
                     Creado: new Date(u.createdAt).toLocaleDateString("es-MX"),
                   })),
@@ -108,8 +146,8 @@ export default function UsuariosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-pos-card border border-slate-700 rounded-2xl w-[450px] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-pos-text font-semibold">Nuevo Usuario</h2>
-              <button onClick={() => setShowForm(false)} className="text-pos-muted hover:text-pos-text cursor-pointer">
+              <h2 className="text-pos-text font-semibold">{editingId ? "Editar Usuario" : "Nuevo Usuario"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-pos-muted hover:text-pos-text cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -124,11 +162,12 @@ export default function UsuariosPage() {
                 placeholder="Username"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
-                className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm placeholder:text-pos-muted/50"
+                disabled={!!editingId}
+                className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm placeholder:text-pos-muted/50 disabled:opacity-50"
               />
               <input
                 type="password"
-                placeholder="Password"
+                placeholder={editingId ? "Nueva password (dejar vacio para no cambiar)" : "Password"}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm placeholder:text-pos-muted/50"
@@ -142,21 +181,24 @@ export default function UsuariosPage() {
                   <option value="cajero">Cajero</option>
                   <option value="admin">Admin</option>
                 </select>
-                <input
-                  type="number"
-                  placeholder="Sucursal ID"
+                <select
                   value={form.sucursalId}
                   onChange={(e) => setForm({ ...form, sucursalId: e.target.value })}
-                  className="bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm"
-                />
+                  className="bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm cursor-pointer"
+                >
+                  <option value="">Sucursal...</option>
+                  {sucursales.map((s) => (
+                    <option key={s.id} value={String(s.id)}>{s.nombre}</option>
+                  ))}
+                </select>
               </div>
               {error && <p className="text-pos-red text-xs">{error}</p>}
               <button
-                onClick={handleCreate}
-                disabled={saving || !form.nombre || !form.username || !form.password}
+                onClick={handleSave}
+                disabled={saving || !form.nombre || !form.sucursalId || (!editingId && (!form.username || !form.password))}
                 className="w-full py-2 bg-pos-green text-white rounded-lg text-sm font-medium hover:bg-pos-green/80 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "Creando..." : "Crear Usuario"}
+                {saving ? "Guardando..." : editingId ? "Guardar Cambios" : "Crear Usuario"}
               </button>
             </div>
           </div>
@@ -173,16 +215,17 @@ export default function UsuariosPage() {
               <th className="p-3 font-medium">Sucursal</th>
               <th className="p-3 font-medium">Creado</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-pos-muted text-sm">Cargando...</td>
+                <td colSpan={7} className="p-8 text-center text-pos-muted text-sm">Cargando...</td>
               </tr>
             ) : usuarios.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-pos-muted text-sm">No hay usuarios</td>
+                <td colSpan={7} className="p-8 text-center text-pos-muted text-sm">No hay usuarios</td>
               </tr>
             ) : (
               usuarios.map((u) => (
@@ -196,7 +239,7 @@ export default function UsuariosPage() {
                       {u.rol}
                     </span>
                   </td>
-                  <td className="p-3 text-pos-muted">Suc. #{u.sucursalId}</td>
+                  <td className="p-3 text-pos-muted">{sucMap[u.sucursalId] || `Suc. #${u.sucursalId}`}</td>
                   <td className="p-3 text-pos-muted text-xs">{new Date(u.createdAt).toLocaleDateString("es-MX")}</td>
                   <td className="p-3 text-center">
                     <button
@@ -207,6 +250,16 @@ export default function UsuariosPage() {
                     >
                       {u.activo ? "Activo" : "Inactivo"}
                     </button>
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => handleEdit(u)} className="p-1.5 rounded-lg bg-pos-blue/20 text-pos-blue hover:bg-pos-blue/30 cursor-pointer" title="Editar">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={async () => { if (confirm("Eliminar usuario?")) { await api.usuarios.delete(u.id); loadUsuarios(); } }} className="p-1.5 rounded-lg bg-pos-red/20 text-pos-red hover:bg-pos-red/30 cursor-pointer" title="Eliminar">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -37,15 +37,15 @@ const navItems = [
   { href: "/stock", icon: Warehouse, label: "Stock" },
   { href: "/cortes", icon: Scissors, label: "Cortes" },
   { href: "/facturas", icon: FileText, label: "Facturas" },
-  { href: "/promociones", icon: Tags, label: "Promociones" },
+  { href: "/promociones", icon: Tags, label: "Promociones", admin: true },
   { href: "/apartados", icon: PackageCheck, label: "Apartados" },
   { href: "/tarjetas-regalo", icon: CreditCard, label: "T. Regalo" },
-  { href: "/reportes", icon: BarChart3, label: "Reportes" },
-  { href: "/bitacora", icon: ClipboardList, label: "Bitacora" },
-  { href: "/proveedores", icon: ContactRound, label: "Proveedores" },
-  { href: "/usuarios", icon: UserCog, label: "Usuarios" },
-  { href: "/sucursales", icon: Building2, label: "Sucursales" },
-  { href: "/terminales", icon: Monitor, label: "Terminales" },
+  { href: "/reportes", icon: BarChart3, label: "Reportes", admin: true },
+  { href: "/bitacora", icon: ClipboardList, label: "Bitacora", admin: true },
+  { href: "/proveedores", icon: ContactRound, label: "Proveedores", admin: true },
+  { href: "/usuarios", icon: UserCog, label: "Usuarios", admin: true },
+  { href: "/sucursales", icon: Building2, label: "Sucursales", admin: true },
+  { href: "/terminales", icon: Monitor, label: "Terminales", admin: true },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -78,8 +78,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-pos-muted mt-0.5">Dashboard</p>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => {
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {navItems.filter((item) => !item.admin || user?.rol === "admin").map((item) => {
             const active = pathname === item.href;
             return (
               <a

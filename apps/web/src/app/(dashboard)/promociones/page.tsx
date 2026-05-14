@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Tags, Plus, Download, X } from "lucide-react";
+import { Tags, Plus, Download, X, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -41,6 +41,7 @@ export default function PromocionesPage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadPromos();
@@ -55,11 +56,11 @@ export default function PromocionesPage() {
       .finally(() => setLoading(false));
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      await api.promociones.create({
+      const data = {
         nombre: form.nombre,
         tipo: form.tipo,
         valor: parseFloat(form.valor) || 0,
@@ -68,14 +69,36 @@ export default function PromocionesPage() {
         categoriaId: form.categoriaId ? parseInt(form.categoriaId) : undefined,
         fechaInicio: form.fechaInicio || undefined,
         fechaFin: form.fechaFin || undefined,
-      });
+      };
+      if (editingId) {
+        await api.promociones.update(editingId, data);
+      } else {
+        await api.promociones.create(data);
+      }
       setShowForm(false);
+      setEditingId(null);
       setForm({ nombre: "", tipo: "porcentaje", valor: "", precioObjetivo: "", productoId: "", categoriaId: "", fechaInicio: "", fechaFin: "" });
       loadPromos();
     } catch (e: any) {
-      setError(e.message || "Error al crear promocion");
+      setError(e.message || (editingId ? "Error al actualizar" : "Error al crear promocion"));
     }
     setSaving(false);
+  };
+
+  const handleEdit = (p: Promocion) => {
+    setForm({
+      nombre: p.nombre,
+      tipo: p.tipo,
+      valor: String(p.valor),
+      precioObjetivo: p.precioObjetivo ? String(p.precioObjetivo) : "",
+      productoId: p.productoId ? String(p.productoId) : "",
+      categoriaId: p.categoriaId ? String(p.categoriaId) : "",
+      fechaInicio: p.fechaInicio ? p.fechaInicio.split("T")[0] : "",
+      fechaFin: p.fechaFin ? p.fechaFin.split("T")[0] : "",
+    });
+    setEditingId(p.id);
+    setError("");
+    setShowForm(true);
   };
 
   const handleToggle = async (p: Promocion) => {
@@ -97,7 +120,7 @@ export default function PromocionesPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setForm({ nombre: "", tipo: "porcentaje", valor: "", precioObjetivo: "", productoId: "", categoriaId: "", fechaInicio: "", fechaFin: "" }); setError(""); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
           >
             <Plus size={16} />
@@ -134,8 +157,8 @@ export default function PromocionesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-pos-card border border-slate-700 rounded-2xl w-[500px] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-pos-text font-semibold">Nueva Promocion</h2>
-              <button onClick={() => setShowForm(false)} className="text-pos-muted hover:text-pos-text cursor-pointer">
+              <h2 className="text-pos-text font-semibold">{editingId ? "Editar Promocion" : "Nueva Promocion"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-pos-muted hover:text-pos-text cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -214,11 +237,11 @@ export default function PromocionesPage() {
               </div>
               {error && <p className="text-pos-red text-xs">{error}</p>}
               <button
-                onClick={handleCreate}
+                onClick={handleSave}
                 disabled={saving || !form.nombre || !form.valor}
                 className="w-full py-2 bg-pos-green text-white rounded-lg text-sm font-medium hover:bg-pos-green/80 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "Creando..." : "Crear Promocion"}
+                {saving ? "Guardando..." : editingId ? "Guardar Cambios" : "Crear Promocion"}
               </button>
             </div>
           </div>
@@ -236,13 +259,14 @@ export default function PromocionesPage() {
               <th className="p-3 font-medium">Inicio</th>
               <th className="p-3 font-medium">Fin</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
             ) : promos.length === 0 ? (
-              <tr><td colSpan={7} className="p-8 text-center text-pos-muted text-sm">No hay promociones</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-pos-muted text-sm">No hay promociones</td></tr>
             ) : (
               promos.map((p) => (
                 <tr key={p.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
@@ -261,6 +285,16 @@ export default function PromocionesPage() {
                     >
                       {p.activa ? "Activa" : "Inactiva"}
                     </button>
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg bg-pos-blue/20 text-pos-blue hover:bg-pos-blue/30 cursor-pointer" title="Editar">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={async () => { if (confirm("Eliminar promocion?")) { await api.promociones.delete(p.id); loadPromos(); } }} className="p-1.5 rounded-lg bg-pos-red/20 text-pos-red hover:bg-pos-red/30 cursor-pointer" title="Eliminar">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

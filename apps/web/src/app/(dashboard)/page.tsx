@@ -8,11 +8,12 @@ import { SalesChart } from "@/components/SalesChart";
 import { TopProductsChart } from "@/components/TopProductsChart";
 import { PaymentChart } from "@/components/PaymentChart";
 
-function getDateRange() {
-  const now = new Date();
-  const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const hasta = now.toISOString();
-  return { desde, hasta };
+function defaultDesde() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+function defaultHasta() {
+  return new Date().toISOString().split("T")[0];
 }
 
 interface KPICardProps {
@@ -42,10 +43,11 @@ export default function DashboardPage() {
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [desde, setDesde] = useState(defaultDesde);
+  const [hasta, setHasta] = useState(defaultHasta);
 
   useEffect(() => {
-    const { desde, hasta } = getDateRange();
-
+    setLoading(true);
     Promise.all([
       api.dashboard.summary(desde, hasta).catch(() => null),
       api.dashboard.dailySales(desde, hasta).catch(() => []),
@@ -58,7 +60,7 @@ export default function DashboardPage() {
       setPaymentMethods(payments || []);
       setLoading(false);
     });
-  }, []);
+  }, [desde, hasta]);
 
   if (loading) {
     return (
@@ -75,10 +77,15 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-pos-text">Dashboard</h1>
-          <p className="text-sm text-pos-muted">Resumen del mes actual</p>
+          <p className="text-sm text-pos-muted">Resumen del periodo seleccionado</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="bg-pos-card border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm" />
+          <span className="text-pos-muted text-sm">a</span>
+          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="bg-pos-card border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm" />
         </div>
         <button
           onClick={() => {

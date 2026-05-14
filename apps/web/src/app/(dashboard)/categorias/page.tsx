@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FolderTree, Plus, Download, X } from "lucide-react";
+import { FolderTree, Plus, Download, X, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -21,6 +21,7 @@ export default function CategoriasPage() {
   const [form, setForm] = useState({ nombre: "", categoriaPadreId: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadCategorias();
@@ -39,22 +40,38 @@ export default function CategoriasPage() {
       .finally(() => setLoading(false));
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      await api.categorias.create({
+      const data = {
         nombre: form.nombre,
-        categoriaPadreId: form.categoriaPadreId ? parseInt(form.categoriaPadreId) : undefined,
-      });
+        categoriaPadreId: form.categoriaPadreId ? parseInt(form.categoriaPadreId) : null,
+      };
+      if (editingId) {
+        await api.categorias.update(editingId, data);
+      } else {
+        await api.categorias.create(data);
+      }
       setShowForm(false);
+      setEditingId(null);
       setForm({ nombre: "", categoriaPadreId: "" });
       loadCategorias();
       api.categorias.list(1, 500).then((res) => setAllCategorias(res.data || []));
     } catch (e: any) {
-      setError(e.message || "Error al crear categoria");
+      setError(e.message || (editingId ? "Error al actualizar" : "Error al crear categoria"));
     }
     setSaving(false);
+  };
+
+  const handleEdit = (c: Categoria) => {
+    setForm({
+      nombre: c.nombre,
+      categoriaPadreId: c.categoriaPadreId ? String(c.categoriaPadreId) : "",
+    });
+    setEditingId(c.id);
+    setError("");
+    setShowForm(true);
   };
 
   const handleToggle = async (c: Categoria) => {
@@ -78,7 +95,7 @@ export default function CategoriasPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setForm({ nombre: "", categoriaPadreId: "" }); setError(""); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
           >
             <Plus size={16} />
@@ -109,8 +126,8 @@ export default function CategoriasPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-pos-card border border-slate-700 rounded-2xl w-[400px] p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-pos-text font-semibold">Nueva Categoria</h2>
-              <button onClick={() => setShowForm(false)} className="text-pos-muted hover:text-pos-text cursor-pointer">
+              <h2 className="text-pos-text font-semibold">{editingId ? "Editar Categoria" : "Nueva Categoria"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-pos-muted hover:text-pos-text cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -133,11 +150,11 @@ export default function CategoriasPage() {
               </select>
               {error && <p className="text-pos-red text-xs">{error}</p>}
               <button
-                onClick={handleCreate}
+                onClick={handleSave}
                 disabled={saving || !form.nombre}
                 className="w-full py-2 bg-pos-green text-white rounded-lg text-sm font-medium hover:bg-pos-green/80 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "Creando..." : "Crear Categoria"}
+                {saving ? "Guardando..." : editingId ? "Guardar Cambios" : "Crear Categoria"}
               </button>
             </div>
           </div>
@@ -151,13 +168,14 @@ export default function CategoriasPage() {
               <th className="p-3 font-medium">Nombre</th>
               <th className="p-3 font-medium">Categoria Padre</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={3} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
             ) : categorias.length === 0 ? (
-              <tr><td colSpan={3} className="p-8 text-center text-pos-muted text-sm">No hay categorias</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-pos-muted text-sm">No hay categorias</td></tr>
             ) : (
               categorias.map((c) => (
                 <tr key={c.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
@@ -172,6 +190,16 @@ export default function CategoriasPage() {
                     >
                       {c.activa ? "Activa" : "Inactiva"}
                     </button>
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => handleEdit(c)} className="p-1.5 rounded-lg bg-pos-blue/20 text-pos-blue hover:bg-pos-blue/30 cursor-pointer" title="Editar">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={async () => { if (confirm("Eliminar categoria?")) { await api.categorias.delete(c.id); loadCategorias(); } }} className="p-1.5 rounded-lg bg-pos-red/20 text-pos-red hover:bg-pos-red/30 cursor-pointer" title="Eliminar">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
