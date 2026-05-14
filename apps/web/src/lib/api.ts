@@ -134,4 +134,63 @@ export const api = {
     alerts: (sucursalId: number) =>
       request<any>(`/stock/alerts?sucursalId=${sucursalId}`),
   },
+  categorias: {
+    list: (page = 1, limit = 50, parentId?: string) =>
+      request<any>(`/categorias?page=${page}&limit=${limit}${parentId ? `&parentId=${parentId}` : ""}`),
+    create: (data: any) =>
+      request<any>("/categorias", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/categorias/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/categorias/${id}`, { method: "DELETE" }),
+  },
+  terminales: {
+    list: (page = 1, limit = 50, sucursalId?: number) =>
+      request<any>(`/terminales?page=${page}&limit=${limit}${sucursalId ? `&sucursalId=${sucursalId}` : ""}`),
+    create: (data: any) =>
+      request<any>("/terminales", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/terminales/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/terminales/${id}`, { method: "DELETE" }),
+  },
+  promociones: {
+    list: (activas?: boolean) =>
+      request<any>(`/promociones${activas !== undefined ? `?activas=${activas}` : ""}`),
+    create: (data: any) =>
+      request<any>("/promociones", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/promociones/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/promociones/${id}`, { method: "DELETE" }),
+  },
+  cortes: {
+    list: (page = 1, limit = 50, terminalId?: number) =>
+      request<any>(`/cortes?page=${page}&limit=${limit}${terminalId ? `&terminalId=${terminalId}` : ""}`),
+    get: (id: number) => request<any>(`/cortes/${id}`),
+  },
+  apartados: {
+    list: (estado?: string) =>
+      request<any>(`/apartados${estado ? `?estado=${estado}` : ""}`),
+    get: (id: number) => request<any>(`/apartados/${id}`),
+  },
+  facturas: {
+    list: (page = 1, limit = 50, estado?: string) =>
+      request<any>(`/facturas?page=${page}&limit=${limit}${estado ? `&estado=${estado}` : ""}`),
+    get: (id: number) => request<any>(`/facturas/${id}`),
+  },
+  bitacora: {
+    list: (params?: { accion?: string; entidad?: string; desde?: string; hasta?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.accion) q.set("accion", params.accion);
+      if (params?.entidad) q.set("entidad", params.entidad);
+      if (params?.desde) q.set("desde", params.desde);
+      if (params?.hasta) q.set("hasta", params.hasta);
+      const qs = q.toString();
+      return request<any>(`/bitacora${qs ? `?${qs}` : ""}`);
+    },
+  },
+  tarjetasRegalo: {
+    list: () => request<any>("/tarjetas-regalo"),
+  },
 };

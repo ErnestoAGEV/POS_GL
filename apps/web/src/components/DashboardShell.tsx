@@ -14,6 +14,15 @@ import {
   UserCog,
   Building2,
   ContactRound,
+  FolderTree,
+  Scissors,
+  FileText,
+  Tags,
+  PackageCheck,
+  CreditCard,
+  BarChart3,
+  ClipboardList,
+  Monitor,
 } from "lucide-react";
 import { getToken, setToken } from "@/lib/api";
 
@@ -21,13 +30,22 @@ const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/ventas", icon: ShoppingCart, label: "Ventas" },
   { href: "/inventario", icon: Package, label: "Inventario" },
+  { href: "/categorias", icon: FolderTree, label: "Categorias" },
   { href: "/clientes", icon: Users, label: "Clientes" },
   { href: "/compras", icon: Truck, label: "Compras" },
   { href: "/traspasos", icon: ArrowLeftRight, label: "Traspasos" },
   { href: "/stock", icon: Warehouse, label: "Stock" },
+  { href: "/cortes", icon: Scissors, label: "Cortes" },
+  { href: "/facturas", icon: FileText, label: "Facturas" },
+  { href: "/promociones", icon: Tags, label: "Promociones" },
+  { href: "/apartados", icon: PackageCheck, label: "Apartados" },
+  { href: "/tarjetas-regalo", icon: CreditCard, label: "T. Regalo" },
+  { href: "/reportes", icon: BarChart3, label: "Reportes" },
+  { href: "/bitacora", icon: ClipboardList, label: "Bitacora" },
   { href: "/proveedores", icon: ContactRound, label: "Proveedores" },
   { href: "/usuarios", icon: UserCog, label: "Usuarios" },
   { href: "/sucursales", icon: Building2, label: "Sucursales" },
+  { href: "/terminales", icon: Monitor, label: "Terminales" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
