@@ -77,4 +77,33 @@ export const api = {
   sucursales: {
     list: () => request<any>("/sucursales"),
   },
+  compras: {
+    list: (page = 1, limit = 50, estado?: string) =>
+      request<any>(`/compras?page=${page}&limit=${limit}${estado ? `&estado=${estado}` : ""}`),
+    get: (id: number) => request<any>(`/compras/${id}`),
+    create: (data: any) =>
+      request<any>("/compras", { method: "POST", body: JSON.stringify(data) }),
+    recibir: (id: number) =>
+      request<any>(`/compras/${id}/recibir`, { method: "PUT" }),
+    cancelar: (id: number) =>
+      request<any>(`/compras/${id}/cancelar`, { method: "PUT" }),
+  },
+  traspasos: {
+    list: (page = 1, limit = 50, estado?: string) =>
+      request<any>(`/traspasos?page=${page}&limit=${limit}${estado ? `&estado=${estado}` : ""}`),
+    get: (id: number) => request<any>(`/traspasos/${id}`),
+    create: (data: any) =>
+      request<any>("/traspasos", { method: "POST", body: JSON.stringify(data) }),
+    enviar: (id: number) =>
+      request<any>(`/traspasos/${id}/enviar`, { method: "PUT" }),
+    recibir: (id: number) =>
+      request<any>(`/traspasos/${id}/recibir`, { method: "PUT" }),
+    cancelar: (id: number) =>
+      request<any>(`/traspasos/${id}/cancelar`, { method: "PUT" }),
+  },
+  stock: {
+    bySucursal: (sucursalId: number) => request<any>(`/stock/${sucursalId}`),
+    alerts: (sucursalId: number) =>
+      request<any>(`/stock/alerts?sucursalId=${sucursalId}`),
+  },
 };
