@@ -18,6 +18,7 @@ import { HeldSalesModal } from "../components/pos/HeldSalesModal";
 import { ReprintModal } from "../components/pos/ReprintModal";
 import { ReturnModal } from "../components/pos/ReturnModal";
 import { ApartadoModal } from "../components/pos/ApartadoModal";
+import { CotizacionModal } from "../components/pos/CotizacionModal";
 import { ApartadosPage } from "./ApartadosPage";
 import { GiftCardsPage } from "./GiftCardsPage";
 import { useCartStore } from "../stores/cart-store";
@@ -32,6 +33,7 @@ export function PosPage() {
   const [showReprint, setShowReprint] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
   const [showApartado, setShowApartado] = useState(false);
+  const [showCotizacion, setShowCotizacion] = useState(false);
   const clear = useCartStore((s) => s.clear);
   const items = useCartStore((s) => s.items);
   const user = useAuthStore((s) => s.user);
@@ -59,6 +61,35 @@ export function PosPage() {
     clear();
   }, [terminalId, user?.id, clear]);
 
+  const handleCreateCotizacion = useCallback(async () => {
+    const cartItems = useCartStore.getState().items;
+    if (cartItems.length === 0) return;
+
+    const subtotal = useCartStore.getState().getSubtotal();
+    const descuento = useCartStore.getState().getDiscountTotal();
+    const iva = useCartStore.getState().getIva();
+    const total = useCartStore.getState().getTotal();
+
+    await window.api.cotizaciones.create({
+      terminalId,
+      usuarioId: user?.id ?? 0,
+      subtotal,
+      descuento,
+      iva,
+      total,
+      items: cartItems.map((item) => ({
+        productoId: item.productoId,
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        descuento: item.descuento,
+        subtotal: item.subtotal,
+      })),
+    });
+
+    clear();
+  }, [terminalId, user?.id, clear]);
+
   const hotkeys = useMemo(
     () => ({
       F1: () => {
@@ -76,11 +107,15 @@ export function PosPage() {
       F10: () => {
         if (items.length > 0) setShowApartado(true);
       },
+      F11: () => {
+        if (items.length > 0) handleCreateCotizacion();
+        else setShowCotizacion(true);
+      },
       F12: () => {
         if (items.length > 0) setShowPayment(true);
       },
     }),
-    [items.length, handleHoldSale]
+    [items.length, handleHoldSale, handleCreateCotizacion]
   );
 
   useHotkeys(hotkeys);
@@ -220,6 +255,25 @@ export function PosPage() {
         isOpen={showReturn}
         onClose={() => setShowReturn(false)}
         usuarioId={user?.id ?? 0}
+      />
+
+      <CotizacionModal
+        isOpen={showCotizacion}
+        onClose={() => setShowCotizacion(false)}
+        onConvert={(recalledItems) => {
+          clear();
+          for (const item of recalledItems) {
+            useCartStore.getState().addItem({
+              id: item.productoId,
+              nombre: item.nombre,
+              precioVenta: item.precioUnitario,
+              tasaIva: item.tasaIva ?? 0.16,
+            });
+            if (item.cantidad > 1) {
+              useCartStore.getState().updateQuantity(item.productoId, item.cantidad);
+            }
+          }
+        }}
       />
 
       <ApartadoModal

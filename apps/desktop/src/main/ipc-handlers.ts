@@ -477,6 +477,102 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
     }
   );
 
+  // ── Cotizaciones ────────────────────────────────────────────────────
+  ipcMain.handle(
+    "cotizaciones:create",
+    async (
+      _event,
+      data: {
+        terminalId: number;
+        usuarioId: number;
+        clienteId?: number;
+        subtotal: number;
+        descuento: number;
+        iva: number;
+        total: number;
+        items: Array<{
+          productoId: number;
+          nombre: string;
+          cantidad: number;
+          precioUnitario: number;
+          descuento: number;
+          subtotal: number;
+        }>;
+      }
+    ) => {
+      const folio = `COT-${Date.now().toString(36).toUpperCase()}`;
+      const ventaSyncId = randomUUID();
+      const fecha = new Date().toISOString();
+
+      const ventaResult = db
+        .insert(schema.ventas)
+        .values({
+          folio,
+          terminalId: data.terminalId,
+          usuarioId: data.usuarioId,
+          clienteId: data.clienteId || null,
+          subtotal: data.subtotal,
+          descuento: data.descuento,
+          iva: data.iva,
+          total: data.total,
+          tipo: "cotizacion" as any,
+          estado: "cotizacion" as any,
+          fecha,
+          syncId: ventaSyncId,
+          syncStatus: "pendiente",
+        })
+        .run();
+
+      const ventaId = Number(ventaResult.lastInsertRowid);
+
+      for (const item of data.items) {
+        db.insert(schema.ventaDetalles)
+          .values({
+            ventaId,
+            productoId: item.productoId,
+            cantidad: item.cantidad,
+            precioUnitario: item.precioUnitario,
+            descuento: item.descuento,
+            subtotal: item.subtotal,
+            syncId: randomUUID(),
+            syncStatus: "pendiente",
+          })
+          .run();
+      }
+
+      return { id: ventaId, folio };
+    }
+  );
+
+  ipcMain.handle("cotizaciones:list", async () => {
+    return sqlite
+      .prepare(
+        `SELECT v.*, c.nombre as clienteNombre
+         FROM ventas v
+         LEFT JOIN clientes c ON c.id = v.cliente_id
+         WHERE v.tipo = 'cotizacion'
+         ORDER BY v.fecha DESC
+         LIMIT 50`
+      )
+      .all();
+  });
+
+  ipcMain.handle("cotizaciones:convert", async (_event, cotizacionId: number) => {
+    // Change cotizacion to normal sale
+    sqlite
+      .prepare(`UPDATE ventas SET tipo = 'normal', estado = 'completada', sync_status = 'pendiente' WHERE id = ?`)
+      .run(cotizacionId);
+
+    const venta = sqlite.prepare(`SELECT * FROM ventas WHERE id = ?`).get(cotizacionId) as any;
+    return venta;
+  });
+
+  ipcMain.handle("cotizaciones:delete", async (_event, id: number) => {
+    sqlite.prepare(`DELETE FROM venta_detalles WHERE venta_id = ?`).run(id);
+    sqlite.prepare(`DELETE FROM ventas WHERE id = ?`).run(id);
+    return { success: true };
+  });
+
   // ── Clients ──────────────────────────────────────────────────────────
   ipcMain.handle("clients:list", async (_event, query?: string) => {
     if (query && query.trim()) {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Download } from "lucide-react";
 import { api } from "@/lib/api";
+import { exportToExcel } from "@/lib/export-excel";
 
 interface Venta {
   id: number;
@@ -39,9 +40,34 @@ export default function VentasPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <ShoppingCart size={20} className="text-pos-green" />
-        <h1 className="text-2xl font-bold text-pos-text">Ventas</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShoppingCart size={20} className="text-pos-green" />
+          <h1 className="text-2xl font-bold text-pos-text">Ventas</h1>
+        </div>
+        {ventas.length > 0 && (
+          <button
+            onClick={() =>
+              exportToExcel(
+                ventas.map((v) => ({
+                  Folio: v.folio,
+                  Fecha: new Date(v.fecha).toLocaleString(),
+                  Tipo: v.tipo,
+                  Subtotal: v.subtotal,
+                  Descuento: v.descuento,
+                  IVA: v.iva,
+                  Total: v.total,
+                  Estado: v.estado,
+                })),
+                "ventas"
+              )
+            }
+            className="flex items-center gap-2 px-4 py-2 bg-pos-green/20 text-pos-green rounded-lg text-sm hover:bg-pos-green/30 transition-colors cursor-pointer"
+          >
+            <Download size={16} />
+            Exportar Excel
+          </button>
+        )}
       </div>
 
       <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">

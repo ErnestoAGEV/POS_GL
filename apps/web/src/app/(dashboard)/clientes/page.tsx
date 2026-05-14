@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users } from "lucide-react";
+import { Users, Download } from "lucide-react";
 import { api } from "@/lib/api";
+import { exportToExcel } from "@/lib/export-excel";
 
 interface Cliente {
   id: number;
@@ -31,9 +32,33 @@ export default function ClientesPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Users size={20} className="text-pos-amber" />
-        <h1 className="text-2xl font-bold text-pos-text">Clientes</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users size={20} className="text-pos-amber" />
+          <h1 className="text-2xl font-bold text-pos-text">Clientes</h1>
+        </div>
+        {clientes.length > 0 && (
+          <button
+            onClick={() =>
+              exportToExcel(
+                clientes.map((c) => ({
+                  Nombre: c.nombre,
+                  Telefono: c.telefono || "",
+                  Email: c.email || "",
+                  RFC: c.rfc || "",
+                  "Limite Credito": c.limiteCredito,
+                  Saldo: c.saldoCredito,
+                  Estado: c.activo ? "Activo" : "Inactivo",
+                })),
+                "clientes"
+              )
+            }
+            className="flex items-center gap-2 px-4 py-2 bg-pos-green/20 text-pos-green rounded-lg text-sm hover:bg-pos-green/30 transition-colors cursor-pointer"
+          >
+            <Download size={16} />
+            Exportar Excel
+          </button>
+        )}
       </div>
 
       <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">

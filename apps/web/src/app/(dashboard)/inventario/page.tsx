@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, Download } from "lucide-react";
 import { api } from "@/lib/api";
+import { exportToExcel } from "@/lib/export-excel";
 
 interface Producto {
   id: number;
@@ -31,9 +32,33 @@ export default function InventarioPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Package size={20} className="text-pos-blue" />
-        <h1 className="text-2xl font-bold text-pos-text">Inventario</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Package size={20} className="text-pos-blue" />
+          <h1 className="text-2xl font-bold text-pos-text">Inventario</h1>
+        </div>
+        {productos.length > 0 && (
+          <button
+            onClick={() =>
+              exportToExcel(
+                productos.map((p) => ({
+                  Nombre: p.nombre,
+                  SKU: p.sku || "",
+                  "Codigo Barras": p.codigoBarras || "",
+                  Costo: p.costo,
+                  "Precio Venta": p.precioVenta,
+                  "Stock Minimo": p.stockMinimo,
+                  Estado: p.activo ? "Activo" : "Inactivo",
+                })),
+                "inventario"
+              )
+            }
+            className="flex items-center gap-2 px-4 py-2 bg-pos-green/20 text-pos-green rounded-lg text-sm hover:bg-pos-green/30 transition-colors cursor-pointer"
+          >
+            <Download size={16} />
+            Exportar Excel
+          </button>
+        )}
       </div>
 
       <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">

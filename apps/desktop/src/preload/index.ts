@@ -199,6 +199,28 @@ const api = {
       ipcRenderer.invoke("tarjetas:consumir", id, monto, ventaId),
     movimientos: (id: number) => ipcRenderer.invoke("tarjetas:movimientos", id),
   },
+  cotizaciones: {
+    create: (data: {
+      terminalId: number;
+      usuarioId: number;
+      clienteId?: number;
+      subtotal: number;
+      descuento: number;
+      iva: number;
+      total: number;
+      items: Array<{
+        productoId: number;
+        nombre: string;
+        cantidad: number;
+        precioUnitario: number;
+        descuento: number;
+        subtotal: number;
+      }>;
+    }) => ipcRenderer.invoke("cotizaciones:create", data),
+    list: () => ipcRenderer.invoke("cotizaciones:list"),
+    convert: (id: number) => ipcRenderer.invoke("cotizaciones:convert", id),
+    delete: (id: number) => ipcRenderer.invoke("cotizaciones:delete", id),
+  },
   devoluciones: {
     create: (data: {
       ventaId: number;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, ShoppingCart, TrendingUp, CreditCard } from "lucide-react";
+import { DollarSign, ShoppingCart, TrendingUp, CreditCard, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/export-excel";
 import { api } from "@/lib/api";
 import { SalesChart } from "@/components/SalesChart";
 import { TopProductsChart } from "@/components/TopProductsChart";
@@ -74,9 +75,26 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-pos-text">Dashboard</h1>
-        <p className="text-sm text-pos-muted">Resumen del mes actual</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-pos-text">Dashboard</h1>
+          <p className="text-sm text-pos-muted">Resumen del mes actual</p>
+        </div>
+        <button
+          onClick={() => {
+            const exportData = [
+              { Concepto: "Ventas Totales", Valor: totalMonto },
+              { Concepto: "Transacciones", Valor: totalVentas },
+              { Concepto: "Ticket Promedio", Valor: ticketPromedio },
+              { Concepto: "Descuentos", Valor: totalDescuento },
+            ];
+            exportToExcel(exportData, "resumen-dashboard");
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-pos-green/20 text-pos-green rounded-lg text-sm hover:bg-pos-green/30 transition-colors cursor-pointer"
+        >
+          <Download size={16} />
+          Exportar Excel
+        </button>
       </div>
 
       {/* KPI Cards */}
