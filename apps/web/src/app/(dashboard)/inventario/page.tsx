@@ -1,0 +1,124 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Package, AlertTriangle } from "lucide-react";
+import { api } from "@/lib/api";
+
+interface Producto {
+  id: number;
+  nombre: string;
+  sku: string | null;
+  codigoBarras: string | null;
+  precioVenta: number;
+  costo: number;
+  stockMinimo: number;
+  activo: boolean;
+}
+
+export default function InventarioPage() {
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.productos
+      .list(page, 50)
+      .then((res) => setProductos(res.data || res))
+      .catch(() => setProductos([]))
+      .finally(() => setLoading(false));
+  }, [page]);
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Package size={20} className="text-pos-blue" />
+        <h1 className="text-2xl font-bold text-pos-text">Inventario</h1>
+      </div>
+
+      <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="text-left text-xs text-pos-muted border-b border-slate-700">
+              <th className="p-3 font-medium">Producto</th>
+              <th className="p-3 font-medium">SKU</th>
+              <th className="p-3 font-medium">Codigo Barras</th>
+              <th className="p-3 font-medium text-right">Costo</th>
+              <th className="p-3 font-medium text-right">Precio Venta</th>
+              <th className="p-3 font-medium text-right">Margen</th>
+              <th className="p-3 font-medium text-right">Stock Min.</th>
+              <th className="p-3 font-medium text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-pos-muted text-sm">
+                  Cargando...
+                </td>
+              </tr>
+            ) : productos.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-pos-muted text-sm">
+                  No hay productos registrados
+                </td>
+              </tr>
+            ) : (
+              productos.map((p) => {
+                const margen = p.precioVenta > 0 && p.costo > 0
+                  ? (((p.precioVenta - p.costo) / p.precioVenta) * 100).toFixed(1)
+                  : "-";
+                return (
+                  <tr key={p.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
+                    <td className="p-3 text-pos-text font-medium">{p.nombre}</td>
+                    <td className="p-3 text-pos-muted font-mono text-xs">{p.sku || "-"}</td>
+                    <td className="p-3 text-pos-muted font-mono text-xs">{p.codigoBarras || "-"}</td>
+                    <td className="p-3 text-pos-muted text-right font-mono">${p.costo.toFixed(2)}</td>
+                    <td className="p-3 text-pos-green text-right font-mono">${p.precioVenta.toFixed(2)}</td>
+                    <td className="p-3 text-pos-blue text-right font-mono">
+                      {margen !== "-" ? `${margen}%` : "-"}
+                    </td>
+                    <td className="p-3 text-right">
+                      {p.stockMinimo > 0 && (
+                        <span className="text-pos-amber font-mono text-xs">{p.stockMinimo}</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                          p.activo
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-slate-700 text-pos-muted"
+                        }`}
+                      >
+                        {p.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-center gap-2">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-4 py-2 bg-pos-card border border-slate-700 rounded-lg text-sm text-pos-muted hover:text-pos-text disabled:opacity-50 cursor-pointer"
+        >
+          Anterior
+        </button>
+        <span className="px-4 py-2 text-sm text-pos-muted">Pagina {page}</span>
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={productos.length < 50}
+          className="px-4 py-2 bg-pos-card border border-slate-700 rounded-lg text-sm text-pos-muted hover:text-pos-text disabled:opacity-50 cursor-pointer"
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  );
+}

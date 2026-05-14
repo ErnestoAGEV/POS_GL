@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pos-bg: #020617;
+  --color-pos-card: #0F172A;
+  --color-pos-active: #1E293B;
+  --color-pos-text: #F8FAFC;
+  --color-pos-muted: #94A3B8;
+  --color-pos-green: #22C55E;
+  --color-pos-red: #EF4444;
+  --color-pos-blue: #3B82F6;
+  --color-pos-amber: #F59E0B;
+}

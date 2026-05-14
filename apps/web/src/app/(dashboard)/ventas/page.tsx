@@ -1,0 +1,117 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { ShoppingCart } from "lucide-react";
+import { api } from "@/lib/api";
+
+interface Venta {
+  id: number;
+  folio: string;
+  total: number;
+  subtotal: number;
+  descuento: number;
+  iva: number;
+  tipo: string;
+  estado: string;
+  fecha: string;
+}
+
+const ESTADO_STYLES: Record<string, string> = {
+  completada: "bg-green-500/20 text-green-400",
+  cancelada: "bg-red-500/20 text-red-400",
+  en_espera: "bg-amber-500/20 text-amber-400",
+  cotizacion: "bg-blue-500/20 text-blue-400",
+};
+
+export default function VentasPage() {
+  const [ventas, setVentas] = useState<Venta[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.ventas
+      .list(page, 50)
+      .then((res) => setVentas(res.data || res))
+      .catch(() => setVentas([]))
+      .finally(() => setLoading(false));
+  }, [page]);
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <ShoppingCart size={20} className="text-pos-green" />
+        <h1 className="text-2xl font-bold text-pos-text">Ventas</h1>
+      </div>
+
+      <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="text-left text-xs text-pos-muted border-b border-slate-700">
+              <th className="p-3 font-medium">Folio</th>
+              <th className="p-3 font-medium">Fecha</th>
+              <th className="p-3 font-medium">Tipo</th>
+              <th className="p-3 font-medium text-right">Subtotal</th>
+              <th className="p-3 font-medium text-right">Descuento</th>
+              <th className="p-3 font-medium text-right">IVA</th>
+              <th className="p-3 font-medium text-right">Total</th>
+              <th className="p-3 font-medium text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-pos-muted text-sm">
+                  Cargando...
+                </td>
+              </tr>
+            ) : ventas.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-pos-muted text-sm">
+                  No hay ventas registradas
+                </td>
+              </tr>
+            ) : (
+              ventas.map((v) => (
+                <tr key={v.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
+                  <td className="p-3 text-pos-text font-mono text-xs">{v.folio}</td>
+                  <td className="p-3 text-pos-muted text-xs">{new Date(v.fecha).toLocaleString()}</td>
+                  <td className="p-3 text-pos-muted">{v.tipo}</td>
+                  <td className="p-3 text-pos-text text-right font-mono">${v.subtotal.toFixed(2)}</td>
+                  <td className="p-3 text-pos-amber text-right font-mono">
+                    {v.descuento > 0 ? `-$${v.descuento.toFixed(2)}` : "-"}
+                  </td>
+                  <td className="p-3 text-pos-muted text-right font-mono">${v.iva.toFixed(2)}</td>
+                  <td className="p-3 text-pos-green text-right font-mono font-semibold">${v.total.toFixed(2)}</td>
+                  <td className="p-3 text-center">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_STYLES[v.estado] || ""}`}>
+                      {v.estado}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-center gap-2">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-4 py-2 bg-pos-card border border-slate-700 rounded-lg text-sm text-pos-muted hover:text-pos-text disabled:opacity-50 cursor-pointer"
+        >
+          Anterior
+        </button>
+        <span className="px-4 py-2 text-sm text-pos-muted">Pagina {page}</span>
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={ventas.length < 50}
+          className="px-4 py-2 bg-pos-card border border-slate-700 rounded-lg text-sm text-pos-muted hover:text-pos-text disabled:opacity-50 cursor-pointer"
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  );
+}
