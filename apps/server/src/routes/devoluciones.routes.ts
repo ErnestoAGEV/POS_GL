@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 
 export async function devolucionesRoutes(app: FastifyInstance) {
@@ -36,13 +36,55 @@ export async function devolucionesRoutes(app: FastifyInstance) {
         })
         .returning();
 
-      // Check if full return — cancel original sale
+      // Restore stock: find sucursalId via venta -> terminal -> sucursal
       const [original] = await db
         .select()
         .from(schema.ventas)
         .where(eq(schema.ventas.id, ventaId))
         .limit(1);
 
+      if (original?.terminalId) {
+        const [terminal] = await db
+          .select({ sucursalId: schema.terminales.sucursalId })
+          .from(schema.terminales)
+          .where(eq(schema.terminales.id, original.terminalId))
+          .limit(1);
+
+        if (terminal) {
+          for (const item of items) {
+            const [stock] = await db
+              .select()
+              .from(schema.stockSucursal)
+              .where(
+                and(
+                  eq(schema.stockSucursal.productoId, item.productoId),
+                  eq(schema.stockSucursal.sucursalId, terminal.sucursalId)
+                )
+              )
+              .limit(1);
+
+            if (stock) {
+              await db
+                .update(schema.stockSucursal)
+                .set({ cantidad: stock.cantidad + item.cantidad })
+                .where(
+                  and(
+                    eq(schema.stockSucursal.productoId, item.productoId),
+                    eq(schema.stockSucursal.sucursalId, terminal.sucursalId)
+                  )
+                );
+            } else {
+              await db.insert(schema.stockSucursal).values({
+                productoId: item.productoId,
+                sucursalId: terminal.sucursalId,
+                cantidad: item.cantidad,
+              });
+            }
+          }
+        }
+      }
+
+      // Check if full return — cancel original sale
       if (original && Math.abs(original.total - total) < 0.01) {
         await db
           .update(schema.ventas)

@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 
 export async function ventasRoutes(app: FastifyInstance) {
@@ -48,6 +48,35 @@ export async function ventasRoutes(app: FastifyInstance) {
 
       if (existing) {
         return { id: existing.id, status: "already_synced" };
+      }
+
+      // Credit limit enforcement
+      const creditPago = body.pagos.find((p) => p.formaPago === "credito");
+      if (creditPago && body.clienteId) {
+        const [cliente] = await db
+          .select()
+          .from(schema.clientes)
+          .where(eq(schema.clientes.id, body.clienteId))
+          .limit(1);
+
+        if (cliente && cliente.limiteCredito > 0) {
+          const newBalance = cliente.saldoCredito + creditPago.monto;
+          if (newBalance > cliente.limiteCredito) {
+            return reply.status(400).send({
+              error: `Limite de credito excedido. Disponible: $${(cliente.limiteCredito - cliente.saldoCredito).toFixed(2)}`,
+            });
+          }
+        }
+
+        // Update client credit balance
+        if (creditPago) {
+          await db
+            .update(schema.clientes)
+            .set({
+              saldoCredito: sql`${schema.clientes.saldoCredito} + ${creditPago.monto}`,
+            })
+            .where(eq(schema.clientes.id, body.clienteId));
+        }
       }
 
       const [venta] = await db

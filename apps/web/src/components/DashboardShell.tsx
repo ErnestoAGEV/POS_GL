@@ -23,6 +23,7 @@ import {
   BarChart3,
   ClipboardList,
   Monitor,
+  RotateCcw,
 } from "lucide-react";
 import { getToken, setToken } from "@/lib/api";
 
@@ -35,6 +36,7 @@ const navItems = [
   { href: "/compras", icon: Truck, label: "Compras" },
   { href: "/traspasos", icon: ArrowLeftRight, label: "Traspasos" },
   { href: "/stock", icon: Warehouse, label: "Stock" },
+  { href: "/devoluciones", icon: RotateCcw, label: "Devoluciones" },
   { href: "/cortes", icon: Scissors, label: "Cortes" },
   { href: "/facturas", icon: FileText, label: "Facturas" },
   { href: "/promociones", icon: Tags, label: "Promociones", admin: true },

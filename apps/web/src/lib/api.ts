@@ -197,4 +197,7 @@ export const api = {
   tarjetasRegalo: {
     list: () => request<any>("/tarjetas-regalo"),
   },
+  devoluciones: {
+    list: () => request<any>("/devoluciones"),
+  },
 };
