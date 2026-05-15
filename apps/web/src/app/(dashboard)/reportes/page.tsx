@@ -7,6 +7,9 @@ import { exportToExcel } from "@/lib/export-excel";
 import { SalesChart } from "@/components/SalesChart";
 import { TopProductsChart } from "@/components/TopProductsChart";
 import { PaymentChart } from "@/components/PaymentChart";
+import { SalesByUserChart } from "@/components/SalesByUserChart";
+import { HourlySalesChart } from "@/components/HourlySalesChart";
+import { SalesByBranchChart } from "@/components/SalesByBranchChart";
 
 function defaultDesde() {
   const d = new Date();
@@ -24,6 +27,9 @@ export default function ReportesPage() {
   const [daily, setDaily] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [byUser, setByUser] = useState<any[]>([]);
+  const [byHour, setByHour] = useState<any[]>([]);
+  const [byBranch, setByBranch] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,21 +39,30 @@ export default function ReportesPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [s, d, tp, pm] = await Promise.all([
+      const [s, d, tp, pm, bu, bh, bb] = await Promise.all([
         api.dashboard.summary(desde, hasta),
         api.dashboard.dailySales(desde, hasta),
         api.dashboard.topProducts(desde, hasta, 10),
         api.dashboard.paymentMethods(desde, hasta),
+        api.dashboard.salesByUser(desde, hasta),
+        api.dashboard.salesByHour(desde, hasta),
+        api.dashboard.salesByBranch(desde, hasta),
       ]);
       setSummary(s);
       setDaily(d || []);
       setTopProducts(tp || []);
       setPayments(pm || []);
+      setByUser(bu || []);
+      setByHour(bh || []);
+      setByBranch(bb || []);
     } catch {
       setSummary(null);
       setDaily([]);
       setTopProducts([]);
       setPayments([]);
+      setByUser([]);
+      setByHour([]);
+      setByBranch([]);
     }
     setLoading(false);
   };
@@ -128,9 +143,26 @@ export default function ReportesPage() {
             </div>
           </div>
 
-          <div className="bg-pos-card border border-slate-700 rounded-xl p-4">
-            <h3 className="text-sm font-medium text-pos-text mb-4">Top 10 Productos</h3>
-            <TopProductsChart data={topProducts} />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-pos-card border border-slate-700 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-pos-text mb-4">Ventas por Vendedor</h3>
+              <SalesByUserChart data={byUser} />
+            </div>
+            <div className="bg-pos-card border border-slate-700 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-pos-text mb-4">Ventas por Hora del Dia</h3>
+              <HourlySalesChart data={byHour} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-pos-card border border-slate-700 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-pos-text mb-4">Ventas por Sucursal</h3>
+              <SalesByBranchChart data={byBranch} />
+            </div>
+            <div className="bg-pos-card border border-slate-700 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-pos-text mb-4">Top 10 Productos</h3>
+              <TopProductsChart data={topProducts} />
+            </div>
           </div>
         </>
       )}

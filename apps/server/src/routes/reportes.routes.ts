@@ -166,4 +166,153 @@ export async function reportesRoutes(app: FastifyInstance) {
       return Array.from(byMethod.values()).sort((a, b) => b.total - a.total);
     },
   });
+
+  // GET /reportes/ventas-por-vendedor — sales grouped by cashier
+  app.get<{
+    Querystring: { desde: string; hasta: string };
+  }>("/reportes/ventas-por-vendedor", {
+    preHandler: [app.authenticate],
+    handler: async (request) => {
+      const desde = new Date(request.query.desde);
+      const hasta = new Date(request.query.hasta);
+
+      const ventas = await db
+        .select()
+        .from(schema.ventas)
+        .where(
+          and(
+            eq(schema.ventas.estado, "completada"),
+            gte(schema.ventas.fecha, desde),
+            lte(schema.ventas.fecha, hasta)
+          )
+        );
+
+      const byUser = new Map<number, { usuarioId: number; ventas: number; total: number }>();
+      for (const v of ventas) {
+        const entry = byUser.get(v.usuarioId) || { usuarioId: v.usuarioId, ventas: 0, total: 0 };
+        entry.ventas++;
+        entry.total += v.total;
+        byUser.set(v.usuarioId, entry);
+      }
+
+      const sorted = Array.from(byUser.values()).sort((a, b) => b.total - a.total);
+
+      // Enrich with user names
+      const userIds = sorted.map((s) => s.usuarioId);
+      if (userIds.length === 0) return [];
+
+      const usuarios = await db
+        .select({ id: schema.usuarios.id, nombre: schema.usuarios.nombre })
+        .from(schema.usuarios)
+        .where(sql`${schema.usuarios.id} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
+
+      const userMap = new Map(usuarios.map((u) => [u.id, u.nombre]));
+
+      return sorted.map((s) => ({
+        ...s,
+        nombre: userMap.get(s.usuarioId) || "Desconocido",
+        ticketPromedio: s.ventas > 0 ? s.total / s.ventas : 0,
+      }));
+    },
+  });
+
+  // GET /reportes/ventas-por-hora — sales grouped by hour of day
+  app.get<{
+    Querystring: { desde: string; hasta: string };
+  }>("/reportes/ventas-por-hora", {
+    preHandler: [app.authenticate],
+    handler: async (request) => {
+      const desde = new Date(request.query.desde);
+      const hasta = new Date(request.query.hasta);
+
+      const ventas = await db
+        .select()
+        .from(schema.ventas)
+        .where(
+          and(
+            eq(schema.ventas.estado, "completada"),
+            gte(schema.ventas.fecha, desde),
+            lte(schema.ventas.fecha, hasta)
+          )
+        );
+
+      const byHour = new Map<number, { hora: number; ventas: number; total: number }>();
+      for (const v of ventas) {
+        const hora = v.fecha.getHours();
+        const entry = byHour.get(hora) || { hora, ventas: 0, total: 0 };
+        entry.ventas++;
+        entry.total += v.total;
+        byHour.set(hora, entry);
+      }
+
+      // Fill all 24 hours
+      const result = [];
+      for (let h = 0; h < 24; h++) {
+        const entry = byHour.get(h) || { hora: h, ventas: 0, total: 0 };
+        result.push(entry);
+      }
+
+      return result;
+    },
+  });
+
+  // GET /reportes/ventas-por-sucursal — sales grouped by branch
+  app.get<{
+    Querystring: { desde: string; hasta: string };
+  }>("/reportes/ventas-por-sucursal", {
+    preHandler: [app.authenticate],
+    handler: async (request) => {
+      const desde = new Date(request.query.desde);
+      const hasta = new Date(request.query.hasta);
+
+      const ventas = await db
+        .select()
+        .from(schema.ventas)
+        .where(
+          and(
+            eq(schema.ventas.estado, "completada"),
+            gte(schema.ventas.fecha, desde),
+            lte(schema.ventas.fecha, hasta)
+          )
+        );
+
+      // ventas -> terminalId -> sucursalId
+      const terminalIds = [...new Set(ventas.map((v) => v.terminalId))];
+      if (terminalIds.length === 0) return [];
+
+      const terminales = await db
+        .select({ id: schema.terminales.id, sucursalId: schema.terminales.sucursalId })
+        .from(schema.terminales)
+        .where(sql`${schema.terminales.id} IN (${sql.join(terminalIds.map(id => sql`${id}`), sql`, `)})`);
+
+      const termSucMap = new Map(terminales.map((t) => [t.id, t.sucursalId]));
+
+      const bySuc = new Map<number, { sucursalId: number; ventas: number; total: number }>();
+      for (const v of ventas) {
+        const sucId = termSucMap.get(v.terminalId) ?? 0;
+        const entry = bySuc.get(sucId) || { sucursalId: sucId, ventas: 0, total: 0 };
+        entry.ventas++;
+        entry.total += v.total;
+        bySuc.set(sucId, entry);
+      }
+
+      const sorted = Array.from(bySuc.values()).sort((a, b) => b.total - a.total);
+
+      // Enrich with branch names
+      const sucIds = sorted.map((s) => s.sucursalId).filter((id) => id > 0);
+      if (sucIds.length === 0) return sorted.map((s) => ({ ...s, nombre: "Sin sucursal" }));
+
+      const sucursales = await db
+        .select({ id: schema.sucursales.id, nombre: schema.sucursales.nombre })
+        .from(schema.sucursales)
+        .where(sql`${schema.sucursales.id} IN (${sql.join(sucIds.map(id => sql`${id}`), sql`, `)})`);
+
+      const sucMap = new Map(sucursales.map((s) => [s.id, s.nombre]));
+
+      return sorted.map((s) => ({
+        ...s,
+        nombre: sucMap.get(s.sucursalId) || "Sin sucursal",
+      }));
+    },
+  });
 }

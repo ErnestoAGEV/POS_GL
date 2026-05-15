@@ -61,6 +61,12 @@ export const api = {
       request<any>(`/reportes/top-productos?desde=${desde}&hasta=${hasta}&limit=${limit}`),
     paymentMethods: (desde: string, hasta: string) =>
       request<any>(`/reportes/metodos-pago?desde=${desde}&hasta=${hasta}`),
+    salesByUser: (desde: string, hasta: string) =>
+      request<any>(`/reportes/ventas-por-vendedor?desde=${desde}&hasta=${hasta}`),
+    salesByHour: (desde: string, hasta: string) =>
+      request<any>(`/reportes/ventas-por-hora?desde=${desde}&hasta=${hasta}`),
+    salesByBranch: (desde: string, hasta: string) =>
+      request<any>(`/reportes/ventas-por-sucursal?desde=${desde}&hasta=${hasta}`),
   },
   ventas: {
     list: (page = 1, limit = 50, params?: { desde?: string; hasta?: string }) => {
