@@ -1156,6 +1156,15 @@ export function registerIpcHandlers(ipcMain: IpcMain) {
     return { success: true };
   });
 
+  ipcMain.handle("sync:pending-count", async () => {
+    const rows = db
+      .select({ id: schema.ventas.id })
+      .from(schema.ventas)
+      .where(eq(schema.ventas.syncStatus, "pendiente"))
+      .all();
+    return rows.length;
+  });
+
   // ── Ticket Printing ─────────────────────────────────────────────────
   ipcMain.handle(
     "ticket:print",

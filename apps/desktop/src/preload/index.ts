@@ -234,6 +234,7 @@ const api = {
   sync: {
     status: () => ipcRenderer.invoke("sync:status"),
     flush: () => ipcRenderer.invoke("sync:flush"),
+    pendingCount: () => ipcRenderer.invoke("sync:pending-count"),
     onStatus: (callback: (status: string) => void) => {
       const handler = (_event: any, status: string) => callback(status);
       ipcRenderer.on("sync:status", handler);

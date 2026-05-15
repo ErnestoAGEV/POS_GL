@@ -20,6 +20,7 @@ import { ReturnModal } from "../components/pos/ReturnModal";
 import { ApartadoModal } from "../components/pos/ApartadoModal";
 import { CotizacionModal } from "../components/pos/CotizacionModal";
 import { DiscountModal } from "../components/pos/DiscountModal";
+import { OfflineBanner } from "../components/layout/OfflineBanner";
 import { ApartadosPage } from "./ApartadosPage";
 import { GiftCardsPage } from "./GiftCardsPage";
 import { useCartStore } from "../stores/cart-store";
@@ -199,6 +200,7 @@ export function PosPage() {
   return (
     <div className="h-screen flex flex-col bg-pos-bg">
       <Navbar />
+      <OfflineBanner />
 
       <div className="flex-1 flex overflow-hidden">
         <Sidebar active={activeSection} onNavigate={setActiveSection} />
