@@ -1,12 +1,14 @@
 import { useCartStore } from "../../stores/cart-store";
 import { formatCurrency } from "../../lib/format";
 import { Button } from "../ui/Button";
+import { Percent } from "lucide-react";
 
 interface CartSummaryProps {
   onPay: () => void;
+  onGlobalDiscount?: () => void;
 }
 
-export function CartSummary({ onPay }: CartSummaryProps) {
+export function CartSummary({ onPay, onGlobalDiscount }: CartSummaryProps) {
   const items = useCartStore((s) => s.items);
   const getSubtotal = useCartStore((s) => s.getSubtotal);
   const getDiscountTotal = useCartStore((s) => s.getDiscountTotal);
@@ -31,12 +33,17 @@ export function CartSummary({ onPay }: CartSummaryProps) {
             <span>Subtotal</span>
             <span className="tabular-nums">{formatCurrency(subtotal)}</span>
           </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-pos-amber">
+          <div className="flex justify-between text-pos-amber">
+            <button
+              onClick={onGlobalDiscount}
+              className="flex items-center gap-1 cursor-pointer hover:text-amber-300 transition-colors"
+              title="Descuento global (F8)"
+            >
+              <Percent size={12} />
               <span>Descuento</span>
-              <span className="tabular-nums">-{formatCurrency(discount)}</span>
-            </div>
-          )}
+            </button>
+            <span className="tabular-nums">-{formatCurrency(discount)}</span>
+          </div>
           <div className="flex justify-between text-pos-muted">
             <span>IVA</span>
             <span className="tabular-nums">{formatCurrency(iva)}</span>

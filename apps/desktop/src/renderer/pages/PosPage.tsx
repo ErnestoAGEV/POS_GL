@@ -19,6 +19,7 @@ import { ReprintModal } from "../components/pos/ReprintModal";
 import { ReturnModal } from "../components/pos/ReturnModal";
 import { ApartadoModal } from "../components/pos/ApartadoModal";
 import { CotizacionModal } from "../components/pos/CotizacionModal";
+import { DiscountModal } from "../components/pos/DiscountModal";
 import { ApartadosPage } from "./ApartadosPage";
 import { GiftCardsPage } from "./GiftCardsPage";
 import { useCartStore } from "../stores/cart-store";
@@ -34,6 +35,8 @@ export function PosPage() {
   const [showReturn, setShowReturn] = useState(false);
   const [showApartado, setShowApartado] = useState(false);
   const [showCotizacion, setShowCotizacion] = useState(false);
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discountTarget, setDiscountTarget] = useState<number | null>(null);
   const clear = useCartStore((s) => s.clear);
   const items = useCartStore((s) => s.items);
   const user = useAuthStore((s) => s.user);
@@ -103,6 +106,11 @@ export function PosPage() {
       },
       F6: () => setShowHeldSales(true),
       F7: () => setShowReprint(true),
+      F8: () => {
+        // Global discount (F8 opens global discount modal)
+        setDiscountTarget(null);
+        setShowDiscount(true);
+      },
       F9: () => setShowReturn(true),
       F10: () => {
         if (items.length > 0) setShowApartado(true);
@@ -200,9 +208,18 @@ export function PosPage() {
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 flex flex-col p-4 gap-4">
                 <ProductSearch />
-                <CartTable />
+                <CartTable onDiscount={(productoId) => {
+                  setDiscountTarget(productoId);
+                  setShowDiscount(true);
+                }} />
               </div>
-              <CartSummary onPay={() => setShowPayment(true)} />
+              <CartSummary
+                onPay={() => setShowPayment(true)}
+                onGlobalDiscount={() => {
+                  setDiscountTarget(null);
+                  setShowDiscount(true);
+                }}
+              />
             </div>
           )}
 
@@ -274,6 +291,12 @@ export function PosPage() {
             }
           }
         }}
+      />
+
+      <DiscountModal
+        isOpen={showDiscount}
+        onClose={() => setShowDiscount(false)}
+        targetProductoId={discountTarget}
       />
 
       <ApartadoModal

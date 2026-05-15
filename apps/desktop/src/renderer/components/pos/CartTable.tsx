@@ -1,8 +1,12 @@
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, Percent } from "lucide-react";
 import { useCartStore } from "../../stores/cart-store";
 import { formatCurrency } from "../../lib/format";
 
-export function CartTable() {
+interface CartTableProps {
+  onDiscount?: (productoId: number) => void;
+}
+
+export function CartTable({ onDiscount }: CartTableProps) {
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -26,6 +30,7 @@ export function CartTable() {
             <th className="text-left py-3 px-4">Producto</th>
             <th className="text-center py-3 px-2 w-32">Cantidad</th>
             <th className="text-right py-3 px-4 w-28">Precio</th>
+            <th className="text-right py-3 px-2 w-24">Desc.</th>
             <th className="text-right py-3 px-4 w-28">Subtotal</th>
             <th className="py-3 px-2 w-12"></th>
           </tr>
@@ -63,6 +68,24 @@ export function CartTable() {
               </td>
               <td className="py-3 px-4 text-right text-pos-muted tabular-nums">
                 {formatCurrency(item.precioUnitario)}
+              </td>
+              <td className="py-3 px-2 text-right">
+                {item.descuento > 0 ? (
+                  <button
+                    onClick={() => onDiscount?.(item.productoId)}
+                    className="text-pos-amber text-sm tabular-nums cursor-pointer hover:text-amber-300 transition-colors"
+                  >
+                    -{formatCurrency(item.descuento)}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onDiscount?.(item.productoId)}
+                    className="text-pos-muted hover:text-pos-amber cursor-pointer transition-colors p-1"
+                    title="Aplicar descuento"
+                  >
+                    <Percent size={14} />
+                  </button>
+                )}
               </td>
               <td className="py-3 px-4 text-right text-pos-text font-medium tabular-nums">
                 {formatCurrency(item.subtotal)}
