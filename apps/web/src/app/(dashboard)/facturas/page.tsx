@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Download, AlertTriangle } from "lucide-react";
+import { FileText, Download, AlertTriangle, FileCode2, FileDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -116,13 +116,14 @@ export default function FacturasPage() {
               <th className="p-3 font-medium text-right">Total</th>
               <th className="p-3 font-medium text-center">Estado</th>
               <th className="p-3 font-medium">Fecha</th>
+              <th className="p-3 font-medium text-center">Descargar</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
             ) : facturas.length === 0 ? (
-              <tr><td colSpan={7} className="p-8 text-center text-pos-muted text-sm">No hay facturas</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-pos-muted text-sm">No hay facturas</td></tr>
             ) : (
               facturas.map((f) => (
                 <tr key={f.id} className="border-b border-slate-800 text-sm hover:bg-pos-active/30 transition-colors">
@@ -137,6 +138,28 @@ export default function FacturasPage() {
                     </span>
                   </td>
                   <td className="p-3 text-pos-muted text-xs">{fmtDate(f.fecha)}</td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/facturas/${f.id}/xml`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 text-pos-muted hover:text-pos-green transition-colors"
+                        title="Descargar XML"
+                      >
+                        <FileCode2 size={15} />
+                      </a>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/facturas/${f.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 text-pos-muted hover:text-pos-blue transition-colors"
+                        title="Ver PDF"
+                      >
+                        <FileDown size={15} />
+                      </a>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
