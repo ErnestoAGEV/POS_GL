@@ -1,0 +1,22 @@
+version: "3.8"
+
+# Development: only runs PostgreSQL. Server and web run locally with pnpm dev.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: posgl
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: posgl_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata_dev:

@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+.turbo
+*.db
+*.sqlite
+.env
+.env.*
+!.env.example
+.git
+.claude
