@@ -102,10 +102,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <div className="p-3 border-t border-slate-700">
           {user && (
-            <div className="px-3 py-2 text-xs text-pos-muted mb-2">
-              <div className="text-pos-text font-medium">{user.nombre}</div>
-              <div>{user.rol}</div>
-            </div>
+            <a href="/perfil" className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-pos-muted hover:text-pos-text hover:bg-pos-active/50 transition-colors cursor-pointer mb-1">
+              <UserCog size={14} />
+              <div>
+                <div className="text-pos-text font-medium text-sm">{user.nombre}</div>
+                <div>{user.rol}</div>
+              </div>
+            </a>
           )}
           <button
             onClick={handleLogout}

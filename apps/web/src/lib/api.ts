@@ -51,6 +51,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ username, password }),
       }),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request<any>("/auth/change-password", {
+        method: "PUT",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
   },
   dashboard: {
     summary: (desde: string, hasta: string) =>

@@ -78,6 +78,47 @@ export async function authRoutes(app: FastifyInstance) {
     };
   });
 
+  // PUT /auth/change-password
+  app.put<{
+    Body: { currentPassword: string; newPassword: string };
+  }>("/auth/change-password", {
+    preHandler: [app.authenticate],
+    handler: async (request, reply) => {
+      const { currentPassword, newPassword } = request.body;
+
+      if (!currentPassword || !newPassword) {
+        return reply.status(400).send({ error: "currentPassword y newPassword son requeridos" });
+      }
+      if (newPassword.length < 4) {
+        return reply.status(400).send({ error: "La nueva contraseña debe tener al menos 4 caracteres" });
+      }
+
+      const user = await db
+        .select()
+        .from(schema.usuarios)
+        .where(eq(schema.usuarios.id, request.user!.userId))
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (!user) {
+        return reply.status(404).send({ error: "Usuario no encontrado" });
+      }
+
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) {
+        return reply.status(401).send({ error: "Contraseña actual incorrecta" });
+      }
+
+      const newHash = await bcrypt.hash(newPassword, 10);
+      await db
+        .update(schema.usuarios)
+        .set({ passwordHash: newHash })
+        .where(eq(schema.usuarios.id, user.id));
+
+      return { status: "ok", message: "Contraseña actualizada" };
+    },
+  });
+
   // GET /auth/me
   app.get("/auth/me", {
     preHandler: [app.authenticate],
