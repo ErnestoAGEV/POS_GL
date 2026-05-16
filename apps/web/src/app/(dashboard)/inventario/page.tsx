@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Download, Search, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Package, Download, Search, Plus, Pencil, Trash2, X, Upload } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -56,6 +56,8 @@ export default function InventarioPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; errors: string[] } | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -128,6 +130,43 @@ export default function InventarioPage() {
     }
   };
 
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter((l) => l.trim());
+      if (lines.length < 2) throw new Error("CSV vacio");
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const items = lines.slice(1).map((line) => {
+        const cols = line.split(",").map((c) => c.trim());
+        const row: any = {};
+        headers.forEach((h, i) => {
+          if (cols[i]) row[h] = cols[i];
+        });
+        return {
+          nombre: row.nombre || row.name || "",
+          sku: row.sku || undefined,
+          codigoBarras: row.codigobarras || row.barcode || undefined,
+          precioVenta: parseFloat(row.precioventa || row.precio || "0"),
+          costo: row.costo ? parseFloat(row.costo) : undefined,
+          stockMinimo: row.stockminimo ? parseInt(row.stockminimo) : undefined,
+        };
+      }).filter((i) => i.nombre && i.precioVenta > 0);
+
+      const result = await api.productos.bulkImport(items);
+      setImportResult(result);
+      loadProducts();
+    } catch (err: any) {
+      setImportResult({ created: 0, errors: [err.message || "Error al importar"] });
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  };
+
   const handleDelete = async (id: number, nombre: string) => {
     if (!confirm(`¿Desactivar producto "${nombre}"?`)) return;
     try {
@@ -146,6 +185,11 @@ export default function InventarioPage() {
           <h1 className="text-2xl font-bold text-pos-text">Inventario</h1>
         </div>
         <div className="flex items-center gap-2">
+          <label className={`flex items-center gap-2 px-4 py-2 bg-pos-amber/20 text-pos-amber rounded-lg text-sm hover:bg-pos-amber/30 transition-colors cursor-pointer ${importing ? "opacity-50 pointer-events-none" : ""}`}>
+            <Upload size={16} />
+            {importing ? "Importando..." : "Importar CSV"}
+            <input type="file" accept=".csv" onChange={handleCsvImport} className="hidden" />
+          </label>
           <button
             onClick={openCreate}
             className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
@@ -194,6 +238,24 @@ export default function InventarioPage() {
           <button onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }} className="px-3 py-2 text-pos-muted text-sm hover:text-pos-text cursor-pointer">Limpiar</button>
         )}
       </div>
+
+      {importResult && (
+        <div className={`rounded-lg p-3 text-sm ${importResult.created > 0 ? "bg-green-500/10 border border-green-700/50" : "bg-red-500/10 border border-red-700/50"}`}>
+          <div className="flex items-center justify-between">
+            <span className={importResult.created > 0 ? "text-green-400" : "text-red-400"}>
+              {importResult.created > 0 ? `${importResult.created} productos importados` : "Error en importacion"}
+              {importResult.errors.length > 0 && ` (${importResult.errors.length} errores)`}
+            </span>
+            <button onClick={() => setImportResult(null)} className="text-pos-muted hover:text-pos-text cursor-pointer"><X size={14} /></button>
+          </div>
+          {importResult.errors.length > 0 && (
+            <ul className="mt-1 text-xs text-pos-muted space-y-0.5">
+              {importResult.errors.slice(0, 5).map((e, i) => <li key={i}>{e}</li>)}
+              {importResult.errors.length > 5 && <li>...y {importResult.errors.length - 5} errores mas</li>}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="bg-pos-card border border-slate-700 rounded-xl overflow-hidden">
         <table className="w-full">

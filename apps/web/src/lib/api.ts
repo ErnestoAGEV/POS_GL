@@ -86,6 +86,8 @@ export const api = {
       request<any>(`/productos/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: number) =>
       request<any>(`/productos/${id}`, { method: "DELETE" }),
+    bulkImport: (items: any[]) =>
+      request<any>("/productos/bulk", { method: "POST", body: JSON.stringify(items) }),
   },
   clientes: {
     list: (page = 1, limit = 50, search?: string) =>

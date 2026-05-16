@@ -176,6 +176,63 @@ export async function productosRoutes(app: FastifyInstance) {
     }
   );
 
+  // POST /productos/bulk — import multiple products at once (admin only)
+  app.post<{
+    Body: Array<{
+      nombre: string;
+      sku?: string;
+      codigoBarras?: string;
+      precioVenta: number;
+      costo?: number;
+      categoriaId?: number;
+      stockMinimo?: number;
+      claveSat?: string;
+      unidadSat?: string;
+      tasaIva?: number;
+    }>;
+  }>(
+    "/productos/bulk",
+    { preHandler: [app.authenticate, requireAdmin] },
+    async (request, reply) => {
+      const items = request.body;
+      if (!Array.isArray(items) || items.length === 0) {
+        return reply.status(400).send({ error: "Se requiere un array de productos" });
+      }
+      if (items.length > 500) {
+        return reply.status(400).send({ error: "Maximo 500 productos por lote" });
+      }
+
+      const results: { created: number; errors: string[] } = { created: 0, errors: [] };
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.nombre || !item.precioVenta) {
+          results.errors.push(`Fila ${i + 1}: nombre y precioVenta son requeridos`);
+          continue;
+        }
+        try {
+          await db.insert(schema.productos).values({
+            nombre: item.nombre,
+            precioVenta: Number(item.precioVenta),
+            sku: item.sku || undefined,
+            codigoBarras: item.codigoBarras || undefined,
+            costo: item.costo !== undefined ? Number(item.costo) : undefined,
+            categoriaId: item.categoriaId !== undefined ? Number(item.categoriaId) : undefined,
+            stockMinimo: item.stockMinimo !== undefined ? Number(item.stockMinimo) : undefined,
+            claveSat: item.claveSat || undefined,
+            unidadSat: item.unidadSat || undefined,
+            tasaIva: item.tasaIva !== undefined ? Number(item.tasaIva) : undefined,
+          });
+          results.created++;
+        } catch (err: any) {
+          results.errors.push(`Fila ${i + 1}: ${err.message || "Error al insertar"}`);
+        }
+      }
+
+      return reply.status(201).send(results);
+    }
+  );
+
   // DELETE /productos/:id — soft delete (activo=false), admin only
   app.delete<{ Params: { id: string } }>(
     "/productos/:id",
