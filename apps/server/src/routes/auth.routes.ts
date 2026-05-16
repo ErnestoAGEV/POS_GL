@@ -9,10 +9,17 @@ import { loginSchema } from "../schemas/validation.js";
 import { validateBody } from "../utils/validate.js";
 
 export async function authRoutes(app: FastifyInstance) {
-  // POST /auth/login
+  // POST /auth/login — stricter rate limit for brute-force protection
   app.post<{
     Body: { username: string; password: string };
-  }>("/auth/login", async (request, reply) => {
+  }>("/auth/login", {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: "1 minute",
+      },
+    },
+  }, async (request, reply) => {
     const parsed = validateBody(loginSchema, request.body, reply);
     if (!parsed) return;
 

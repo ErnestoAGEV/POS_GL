@@ -1,5 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import socketioPlugin from "./plugins/socketio.js";
 import { config } from "./config.js";
 import errorHandler from "./plugins/error-handler.js";
@@ -32,6 +34,15 @@ const app = Fastify({
 
 await app.register(cors, {
   origin: true,
+});
+
+await app.register(helmet, {
+  contentSecurityPolicy: false, // Disable CSP for API server
+});
+
+await app.register(rateLimit, {
+  max: 100,
+  timeWindow: "1 minute",
 });
 
 await app.register(socketioPlugin);
