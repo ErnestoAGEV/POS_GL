@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Warehouse, Download, AlertTriangle } from "lucide-react";
+import { Warehouse, Download, AlertTriangle, Pencil, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -27,6 +27,9 @@ export default function StockPage() {
   const [selectedSuc, setSelectedSuc] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [showAlertsOnly, setShowAlertsOnly] = useState(false);
+  const [adjusting, setAdjusting] = useState<StockItem | null>(null);
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustMotivo, setAdjustMotivo] = useState("");
 
   useEffect(() => {
     api.sucursales
@@ -54,6 +57,28 @@ export default function StockPage() {
       .catch(() => setStock([]))
       .finally(() => setLoading(false));
   }, [selectedSuc, showAlertsOnly]);
+
+  const handleAdjust = async () => {
+    if (!adjusting || !adjustQty) return;
+    try {
+      await api.stock.adjust({
+        productoId: adjusting.productoId,
+        sucursalId: selectedSuc,
+        cantidad: parseFloat(adjustQty),
+        motivo: adjustMotivo || "Ajuste manual desde dashboard",
+      });
+      setAdjusting(null);
+      setAdjustQty("");
+      setAdjustMotivo("");
+      // Reload stock
+      const res = showAlertsOnly
+        ? await api.stock.alerts(selectedSuc)
+        : await api.stock.bySucursal(selectedSuc);
+      setStock(res.data || []);
+    } catch {
+      // handled by api client
+    }
+  };
 
   const totalValor = stock.reduce((s, i) => s + i.cantidad * i.costo, 0);
   const totalVenta = stock.reduce((s, i) => s + i.cantidad * i.precioVenta, 0);
@@ -147,16 +172,17 @@ export default function StockPage() {
               <th className="p-3 font-medium text-right">Precio</th>
               <th className="p-3 font-medium text-right">Valor Inv.</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Ajustar</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-pos-muted text-sm">Cargando...</td>
+                <td colSpan={9} className="p-8 text-center text-pos-muted text-sm">Cargando...</td>
               </tr>
             ) : stock.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-pos-muted text-sm">
+                <td colSpan={9} className="p-8 text-center text-pos-muted text-sm">
                   {showAlertsOnly ? "Sin alertas de stock" : "Sin stock registrado"}
                 </td>
               </tr>
@@ -186,6 +212,15 @@ export default function StockPage() {
                         </span>
                       )}
                     </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => { setAdjusting(i); setAdjustQty(String(i.cantidad)); setAdjustMotivo(""); }}
+                        className="p-1.5 text-pos-muted hover:text-pos-blue transition-colors cursor-pointer"
+                        title="Ajustar stock"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    </td>
                   </tr>
                 );
               })
@@ -193,6 +228,31 @@ export default function StockPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Adjust stock modal */}
+      {adjusting && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-pos-card border border-slate-700 rounded-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-pos-text">Ajustar Stock</h2>
+              <button onClick={() => setAdjusting(null)} className="text-pos-muted hover:text-pos-text cursor-pointer"><X size={20} /></button>
+            </div>
+            <p className="text-sm text-pos-muted">{adjusting.productoNombre}</p>
+            <div>
+              <label className="text-xs text-pos-muted">Nueva cantidad</label>
+              <input type="number" step="1" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-pos-muted">Motivo</label>
+              <input value={adjustMotivo} onChange={(e) => setAdjustMotivo(e.target.value)} placeholder="Conteo fisico, merma, etc." className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1 placeholder:text-pos-muted/40" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setAdjusting(null)} className="px-4 py-2 text-sm text-pos-muted hover:text-pos-text cursor-pointer">Cancelar</button>
+              <button onClick={handleAdjust} disabled={!adjustQty} className="px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 disabled:opacity-50 transition-colors cursor-pointer">Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

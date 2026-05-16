@@ -164,6 +164,8 @@ export const api = {
     alerts: (sucursalId: number) =>
       request<any>(`/stock/alerts?sucursalId=${sucursalId}`),
     alertsGlobal: () => request<any>("/stock/alerts-global"),
+    adjust: (data: { productoId: number; sucursalId: number; cantidad: number; motivo: string }) =>
+      request<any>("/stock/adjust", { method: "POST", body: JSON.stringify(data) }),
   },
   categorias: {
     list: (page = 1, limit = 50, parentId?: string) =>

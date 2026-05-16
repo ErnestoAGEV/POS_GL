@@ -85,10 +85,15 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-pos-text">Dashboard</h1>
           <p className="text-sm text-pos-muted">Resumen del periodo seleccionado</p>
         </div>
-        <div className="flex items-center gap-3">
-          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="bg-pos-card border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm" />
-          <span className="text-pos-muted text-sm">a</span>
-          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="bg-pos-card border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1">
+            <button onClick={() => { const t = new Date(); setDesde(t.toISOString().split("T")[0]); setHasta(t.toISOString().split("T")[0]); }} className="px-2 py-1 text-xs bg-pos-card border border-slate-700 rounded text-pos-muted hover:text-pos-text cursor-pointer">Hoy</button>
+            <button onClick={() => { const t = new Date(); t.setDate(t.getDate() - 7); setDesde(t.toISOString().split("T")[0]); setHasta(new Date().toISOString().split("T")[0]); }} className="px-2 py-1 text-xs bg-pos-card border border-slate-700 rounded text-pos-muted hover:text-pos-text cursor-pointer">7 dias</button>
+            <button onClick={() => { setDesde(defaultDesde()); setHasta(defaultHasta()); }} className="px-2 py-1 text-xs bg-pos-card border border-slate-700 rounded text-pos-muted hover:text-pos-text cursor-pointer">Mes</button>
+          </div>
+          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="bg-pos-card border border-slate-700 rounded-lg px-3 py-1.5 text-pos-text text-sm" />
+          <span className="text-pos-muted text-xs">a</span>
+          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="bg-pos-card border border-slate-700 rounded-lg px-3 py-1.5 text-pos-text text-sm" />
         </div>
         <button
           onClick={() => {
