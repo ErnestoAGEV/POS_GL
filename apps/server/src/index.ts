@@ -88,11 +88,18 @@ app.get("/health", async () => {
     dbOk = true;
   } catch { /* db unreachable */ }
 
+  const mem = process.memoryUsage();
   return {
     status: dbOk ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
     database: dbOk ? "connected" : "unreachable",
     version: "0.1.0",
+    uptime: Math.floor(process.uptime()),
+    memory: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+    },
   };
 });
 
