@@ -6,3 +6,9 @@ export const config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "24h",
   nodeEnv: process.env.NODE_ENV || "development",
 };
+
+// Prevent production startup with default JWT secret
+if (config.nodeEnv === "production" && config.jwtSecret === "posgl-dev-secret-change-in-production") {
+  console.error("FATAL: JWT_SECRET must be set in production. Exiting.");
+  process.exit(1);
+}
