@@ -5,20 +5,18 @@ import jwt, { type SignOptions } from "jsonwebtoken";
 import { db, schema } from "../db/index.js";
 import { config } from "../config.js";
 import type { JwtPayload } from "../plugins/auth.js";
+import { loginSchema } from "../schemas/validation.js";
+import { validateBody } from "../utils/validate.js";
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/login
   app.post<{
     Body: { username: string; password: string };
   }>("/auth/login", async (request, reply) => {
-    const { username, password } = request.body;
+    const parsed = validateBody(loginSchema, request.body, reply);
+    if (!parsed) return;
 
-    if (!username || !password) {
-      return reply.status(400).send({
-        error: "Validation Error",
-        message: "Username y password son requeridos",
-      });
-    }
+    const { username, password } = parsed;
 
     const user = await db
       .select()

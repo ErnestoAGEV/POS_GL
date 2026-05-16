@@ -8,6 +8,8 @@ import {
   type CfdiData,
 } from "../services/cfdi.service.js";
 import { generateInvoiceHtml } from "../services/cfdi-pdf.service.js";
+import { createFacturaSchema, cancelarFacturaSchema } from "../schemas/validation.js";
+import { validateBody } from "../utils/validate.js";
 
 export async function facturasRoutes(app: FastifyInstance) {
   // POST /facturas — create invoice with CFDI XML generation
@@ -21,13 +23,10 @@ export async function facturasRoutes(app: FastifyInstance) {
   }>("/facturas", {
     preHandler: [app.authenticate],
     handler: async (request, reply) => {
-      const { ventaIds, clienteId, tipo, total } = request.body;
+      const parsed = validateBody(createFacturaSchema, request.body, reply);
+      if (!parsed) return;
 
-      if (!ventaIds || ventaIds.length === 0) {
-        return reply
-          .status(400)
-          .send({ error: "Se requiere al menos una venta" });
-      }
+      const { ventaIds, clienteId, tipo, total } = parsed;
 
       // Get client
       const cliente = await db

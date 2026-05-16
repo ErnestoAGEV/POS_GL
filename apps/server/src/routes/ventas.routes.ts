@@ -1,6 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
+import { createVentaSchema } from "../schemas/validation.js";
+import { validateBody } from "../utils/validate.js";
 
 export async function ventasRoutes(app: FastifyInstance) {
   // POST /ventas — receive a sale from a terminal
@@ -36,7 +38,8 @@ export async function ventasRoutes(app: FastifyInstance) {
   }>("/ventas", {
     preHandler: [app.authenticate],
     handler: async (request, reply) => {
-      const body = request.body;
+      const body = validateBody(createVentaSchema, request.body, reply);
+      if (!body) return;
 
       // Idempotent by syncId
       const existing = await db

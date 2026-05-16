@@ -1,6 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { eq, desc, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
+import { createDevolucionSchema } from "../schemas/validation.js";
+import { validateBody } from "../utils/validate.js";
 
 export async function devolucionesRoutes(app: FastifyInstance) {
   // POST /devoluciones
@@ -20,7 +22,10 @@ export async function devolucionesRoutes(app: FastifyInstance) {
   }>("/devoluciones", {
     preHandler: [app.authenticate],
     handler: async (request, reply) => {
-      const { ventaId, motivo, items, total } = request.body;
+      const parsed = validateBody(createDevolucionSchema, request.body, reply);
+      if (!parsed) return;
+
+      const { ventaId, motivo, items, total } = parsed;
 
       const folio = `DEV-${Date.now().toString(36).toUpperCase()}`;
 
