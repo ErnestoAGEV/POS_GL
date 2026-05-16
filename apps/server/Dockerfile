@@ -45,9 +45,12 @@ COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
 COPY --from=builder /app/apps/server/drizzle ./apps/server/drizzle
+COPY apps/server/docker-entrypoint.sh ./apps/server/docker-entrypoint.sh
 
 WORKDIR /app/apps/server
 
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 4000
 
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

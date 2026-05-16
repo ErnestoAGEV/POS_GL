@@ -33,7 +33,9 @@ const app = Fastify({
 });
 
 await app.register(cors, {
-  origin: true,
+  origin: config.nodeEnv === "production"
+    ? (process.env.CORS_ORIGIN || "http://localhost:3000").split(",")
+    : true,
 });
 
 await app.register(helmet, {
