@@ -30,6 +30,8 @@ import { reportesRoutes } from "./routes/reportes.routes.js";
 
 const app = Fastify({
   logger: true,
+  genReqId: () => crypto.randomUUID(),
+  requestIdHeader: "x-request-id",
 });
 
 await app.register(cors, {
@@ -45,6 +47,10 @@ await app.register(helmet, {
 await app.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute",
+});
+
+app.addHook("onSend", async (request, reply) => {
+  reply.header("x-request-id", request.id);
 });
 
 await app.register(socketioPlugin);
