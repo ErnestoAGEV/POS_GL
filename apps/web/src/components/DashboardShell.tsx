@@ -24,8 +24,9 @@ import {
   ClipboardList,
   Monitor,
   RotateCcw,
+  Bell,
 } from "lucide-react";
-import { getToken, setToken } from "@/lib/api";
+import { getToken, setToken, api } from "@/lib/api";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -54,6 +55,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotif, setShowNotif] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -63,6 +66,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
     const stored = localStorage.getItem("posgl_user");
     if (stored) setUser(JSON.parse(stored));
+
+    // Load recent bitacora as notifications
+    api.bitacora.list({}).then((data) => {
+      const items = Array.isArray(data) ? data : data.data || [];
+      setNotifications(items.slice(0, 10));
+    }).catch(() => {});
   }, [router]);
 
   const handleLogout = () => {
@@ -121,7 +130,47 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto relative">
+        {/* Top bar with notifications */}
+        <div className="sticky top-0 z-40 bg-pos-bg/80 backdrop-blur-sm border-b border-slate-700/50 px-6 py-2 flex justify-end">
+          <div className="relative">
+            <button
+              onClick={() => setShowNotif(!showNotif)}
+              className="p-2 text-pos-muted hover:text-pos-text transition-colors cursor-pointer relative"
+            >
+              <Bell size={18} />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-pos-blue rounded-full" />
+              )}
+            </button>
+            {showNotif && (
+              <div className="absolute right-0 top-full mt-1 w-80 bg-pos-card border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+                <div className="p-3 border-b border-slate-700 flex items-center justify-between">
+                  <span className="text-sm font-medium text-pos-text">Actividad Reciente</span>
+                  <a href="/bitacora" className="text-xs text-pos-blue hover:underline">Ver todo</a>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-pos-muted text-center">Sin actividad reciente</p>
+                  ) : (
+                    notifications.map((n: any) => (
+                      <div key={n.id} className="px-3 py-2 border-b border-slate-800 last:border-0 hover:bg-pos-active/30">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 bg-pos-blue/20 text-pos-blue rounded text-[10px]">{n.accion}</span>
+                          <span className="text-xs text-pos-text">{n.entidad}</span>
+                        </div>
+                        <p className="text-xs text-pos-muted mt-0.5 truncate">{n.descripcion || `ID: ${n.entidadId}`}</p>
+                        <p className="text-[10px] text-pos-muted/60 mt-0.5">{new Date(n.fecha).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
