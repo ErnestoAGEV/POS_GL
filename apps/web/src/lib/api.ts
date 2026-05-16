@@ -156,6 +156,7 @@ export const api = {
     bySucursal: (sucursalId: number) => request<any>(`/stock/${sucursalId}`),
     alerts: (sucursalId: number) =>
       request<any>(`/stock/alerts?sucursalId=${sucursalId}`),
+    alertsGlobal: () => request<any>("/stock/alerts-global"),
   },
   categorias: {
     list: (page = 1, limit = 50, parentId?: string) =>

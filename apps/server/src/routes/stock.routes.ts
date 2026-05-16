@@ -3,6 +3,35 @@ import { eq, and, sql, lte } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 
 export async function stockRoutes(app: FastifyInstance) {
+  // GET /stock/alerts-global — products below minimum across all branches
+  app.get("/stock/alerts-global", {
+    preHandler: [app.authenticate],
+    handler: async () => {
+      const rows = await db
+        .select({
+          productoId: schema.stockSucursal.productoId,
+          productoNombre: schema.productos.nombre,
+          sku: schema.productos.sku,
+          sucursalId: schema.stockSucursal.sucursalId,
+          sucursalNombre: schema.sucursales.nombre,
+          cantidad: schema.stockSucursal.cantidad,
+          stockMinimo: schema.productos.stockMinimo,
+        })
+        .from(schema.stockSucursal)
+        .innerJoin(schema.productos, eq(schema.stockSucursal.productoId, schema.productos.id))
+        .innerJoin(schema.sucursales, eq(schema.stockSucursal.sucursalId, schema.sucursales.id))
+        .where(
+          and(
+            lte(schema.stockSucursal.cantidad, sql`${schema.productos.stockMinimo}`),
+            eq(schema.productos.activo, true),
+            sql`${schema.productos.stockMinimo} > 0`
+          )
+        );
+
+      return { data: rows, count: rows.length };
+    },
+  });
+
   // GET /stock/alerts?sucursalId=N — products below minimum stock
   app.get<{
     Querystring: { sucursalId: string };

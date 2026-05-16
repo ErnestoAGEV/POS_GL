@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, ShoppingCart, TrendingUp, CreditCard, Download } from "lucide-react";
+import { DollarSign, ShoppingCart, TrendingUp, CreditCard, Download, AlertTriangle } from "lucide-react";
 import { exportToExcel } from "@/lib/export-excel";
 import { api } from "@/lib/api";
 import { SalesChart } from "@/components/SalesChart";
@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [dailySales, setDailySales] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [stockAlerts, setStockAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [desde, setDesde] = useState(defaultDesde);
   const [hasta, setHasta] = useState(defaultHasta);
@@ -53,11 +54,13 @@ export default function DashboardPage() {
       api.dashboard.dailySales(desde, hasta).catch(() => []),
       api.dashboard.topProducts(desde, hasta).catch(() => []),
       api.dashboard.paymentMethods(desde, hasta).catch(() => []),
-    ]).then(([sum, daily, top, payments]) => {
+      api.stock.alertsGlobal().catch(() => ({ data: [] })),
+    ]).then(([sum, daily, top, payments, alerts]) => {
       setSummary(sum);
       setDailySales(daily || []);
       setTopProducts(top || []);
       setPaymentMethods(payments || []);
+      setStockAlerts(alerts?.data || []);
       setLoading(false);
     });
   }, [desde, hasta]);
@@ -151,6 +154,33 @@ export default function DashboardPage() {
         <h3 className="text-sm font-medium text-pos-text mb-4">Productos Mas Vendidos</h3>
         <TopProductsChart data={topProducts} />
       </div>
+
+      {/* Stock Alerts */}
+      {stockAlerts.length > 0 && (
+        <div className="bg-pos-card border border-amber-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle size={16} className="text-pos-amber" />
+            <h3 className="text-sm font-medium text-pos-amber">Alertas de Stock Bajo ({stockAlerts.length})</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {stockAlerts.slice(0, 9).map((a: any, i: number) => (
+              <div key={i} className="flex items-center justify-between bg-pos-bg/50 rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm text-pos-text truncate">{a.productoNombre}</p>
+                  <p className="text-xs text-pos-muted">{a.sucursalNombre}</p>
+                </div>
+                <div className="text-right ml-2 shrink-0">
+                  <span className="text-pos-red font-mono text-sm font-bold">{a.cantidad}</span>
+                  <span className="text-pos-muted text-xs">/{a.stockMinimo}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {stockAlerts.length > 9 && (
+            <p className="text-xs text-pos-muted mt-2 text-center">y {stockAlerts.length - 9} alertas mas...</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
