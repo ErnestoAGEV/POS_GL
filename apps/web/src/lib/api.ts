@@ -75,6 +75,7 @@ export const api = {
       if (params?.hasta) url += `&hasta=${params.hasta}`;
       return request<any>(url);
     },
+    get: (id: number) => request<any>(`/ventas/${id}`),
   },
   productos: {
     list: (page = 1, limit = 50, search?: string) =>
