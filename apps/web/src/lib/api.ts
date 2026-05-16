@@ -79,10 +79,22 @@ export const api = {
   productos: {
     list: (page = 1, limit = 50, search?: string) =>
       request<any>(`/productos?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`),
+    create: (data: any) =>
+      request<any>("/productos", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/productos/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/productos/${id}`, { method: "DELETE" }),
   },
   clientes: {
     list: (page = 1, limit = 50, search?: string) =>
       request<any>(`/clientes?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}`),
+    create: (data: any) =>
+      request<any>("/clientes", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: any) =>
+      request<any>(`/clientes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: number) =>
+      request<any>(`/clientes/${id}`, { method: "DELETE" }),
   },
   sucursales: {
     list: (page = 1, limit = 50) =>

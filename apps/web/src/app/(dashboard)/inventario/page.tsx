@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Download, Search } from "lucide-react";
+import { Package, Download, Search, Plus, Pencil, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -13,8 +13,38 @@ interface Producto {
   precioVenta: number;
   costo: number;
   stockMinimo: number;
+  categoriaId: number | null;
+  claveSat: string | null;
+  unidadSat: string | null;
+  tasaIva: number;
   activo: boolean;
 }
+
+interface ProductForm {
+  nombre: string;
+  sku: string;
+  codigoBarras: string;
+  precioVenta: string;
+  costo: string;
+  stockMinimo: string;
+  categoriaId: string;
+  claveSat: string;
+  unidadSat: string;
+  tasaIva: string;
+}
+
+const emptyForm: ProductForm = {
+  nombre: "",
+  sku: "",
+  codigoBarras: "",
+  precioVenta: "",
+  costo: "",
+  stockMinimo: "0",
+  categoriaId: "",
+  claveSat: "",
+  unidadSat: "H87",
+  tasaIva: "0.16",
+};
 
 export default function InventarioPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -22,19 +52,90 @@ export default function InventarioPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    loadProducts();
+  }, [page, search]);
+
+  const loadProducts = () => {
     setLoading(true);
     api.productos
       .list(page, 50, search || undefined)
       .then((res) => setProductos(res.data || res))
       .catch(() => setProductos([]))
       .finally(() => setLoading(false));
-  }, [page, search]);
+  };
 
   const handleSearch = () => {
     setSearch(searchInput);
     setPage(1);
+  };
+
+  const openCreate = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+    setShowModal(true);
+  };
+
+  const openEdit = (p: Producto) => {
+    setForm({
+      nombre: p.nombre,
+      sku: p.sku || "",
+      codigoBarras: p.codigoBarras || "",
+      precioVenta: String(p.precioVenta),
+      costo: String(p.costo),
+      stockMinimo: String(p.stockMinimo),
+      categoriaId: p.categoriaId ? String(p.categoriaId) : "",
+      claveSat: p.claveSat || "",
+      unidadSat: p.unidadSat || "H87",
+      tasaIva: String(p.tasaIva),
+    });
+    setEditingId(p.id);
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.nombre || !form.precioVenta) return;
+    setSaving(true);
+    try {
+      const data = {
+        nombre: form.nombre,
+        sku: form.sku || undefined,
+        codigoBarras: form.codigoBarras || undefined,
+        precioVenta: parseFloat(form.precioVenta),
+        costo: form.costo ? parseFloat(form.costo) : 0,
+        stockMinimo: parseInt(form.stockMinimo) || 0,
+        categoriaId: form.categoriaId ? parseInt(form.categoriaId) : undefined,
+        claveSat: form.claveSat || undefined,
+        unidadSat: form.unidadSat || undefined,
+        tasaIva: form.tasaIva ? parseFloat(form.tasaIva) : 0.16,
+      };
+      if (editingId) {
+        await api.productos.update(editingId, data);
+      } else {
+        await api.productos.create(data);
+      }
+      setShowModal(false);
+      loadProducts();
+    } catch {
+      // error handled by api client
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number, nombre: string) => {
+    if (!confirm(`¿Desactivar producto "${nombre}"?`)) return;
+    try {
+      await api.productos.delete(id);
+      loadProducts();
+    } catch {
+      // error handled by api client
+    }
   };
 
   return (
@@ -44,28 +145,37 @@ export default function InventarioPage() {
           <Package size={20} className="text-pos-blue" />
           <h1 className="text-2xl font-bold text-pos-text">Inventario</h1>
         </div>
-        {productos.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() =>
-              exportToExcel(
-                productos.map((p) => ({
-                  Nombre: p.nombre,
-                  SKU: p.sku || "",
-                  "Codigo Barras": p.codigoBarras || "",
-                  Costo: p.costo,
-                  "Precio Venta": p.precioVenta,
-                  "Stock Minimo": p.stockMinimo,
-                  Estado: p.activo ? "Activo" : "Inactivo",
-                })),
-                "inventario"
-              )
-            }
-            className="flex items-center gap-2 px-4 py-2 bg-pos-green/20 text-pos-green rounded-lg text-sm hover:bg-pos-green/30 transition-colors cursor-pointer"
+            onClick={openCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 transition-colors cursor-pointer"
           >
-            <Download size={16} />
-            Exportar Excel
+            <Plus size={16} />
+            Nuevo Producto
           </button>
-        )}
+          {productos.length > 0 && (
+            <button
+              onClick={() =>
+                exportToExcel(
+                  productos.map((p) => ({
+                    Nombre: p.nombre,
+                    SKU: p.sku || "",
+                    "Codigo Barras": p.codigoBarras || "",
+                    Costo: p.costo,
+                    "Precio Venta": p.precioVenta,
+                    "Stock Minimo": p.stockMinimo,
+                    Estado: p.activo ? "Activo" : "Inactivo",
+                  })),
+                  "inventario"
+                )
+              }
+              className="flex items-center gap-2 px-4 py-2 bg-pos-green/20 text-pos-green rounded-lg text-sm hover:bg-pos-green/30 transition-colors cursor-pointer"
+            >
+              <Download size={16} />
+              Excel
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -97,13 +207,14 @@ export default function InventarioPage() {
               <th className="p-3 font-medium text-right">Margen</th>
               <th className="p-3 font-medium text-right">Stock Min.</th>
               <th className="p-3 font-medium text-center">Estado</th>
+              <th className="p-3 font-medium text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
+              <tr><td colSpan={9} className="p-8 text-center text-pos-muted text-sm">Cargando...</td></tr>
             ) : productos.length === 0 ? (
-              <tr><td colSpan={8} className="p-8 text-center text-pos-muted text-sm">No hay productos registrados</td></tr>
+              <tr><td colSpan={9} className="p-8 text-center text-pos-muted text-sm">No hay productos registrados</td></tr>
             ) : (
               productos.map((p) => {
                 const margen = p.precioVenta > 0 && p.costo > 0
@@ -121,6 +232,16 @@ export default function InventarioPage() {
                     <td className="p-3 text-center">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${p.activo ? "bg-green-500/20 text-green-400" : "bg-slate-700 text-pos-muted"}`}>{p.activo ? "Activo" : "Inactivo"}</span>
                     </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => openEdit(p)} className="p-1.5 text-pos-muted hover:text-pos-blue transition-colors cursor-pointer" title="Editar">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-pos-muted hover:text-pos-red transition-colors cursor-pointer" title="Desactivar">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -134,6 +255,68 @@ export default function InventarioPage() {
         <span className="px-4 py-2 text-sm text-pos-muted">Pagina {page}</span>
         <button onClick={() => setPage((p) => p + 1)} disabled={productos.length < 50} className="px-4 py-2 bg-pos-card border border-slate-700 rounded-lg text-sm text-pos-muted hover:text-pos-text disabled:opacity-50 cursor-pointer">Siguiente</button>
       </div>
+
+      {/* Modal crear/editar producto */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-pos-card border border-slate-700 rounded-xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-pos-text">
+                {editingId ? "Editar Producto" : "Nuevo Producto"}
+              </h2>
+              <button onClick={() => setShowModal(false)} className="text-pos-muted hover:text-pos-text cursor-pointer">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs text-pos-muted">Nombre *</label>
+                <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">SKU</label>
+                <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Codigo de Barras</label>
+                <input value={form.codigoBarras} onChange={(e) => setForm({ ...form, codigoBarras: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Precio Venta *</label>
+                <input type="number" step="0.01" value={form.precioVenta} onChange={(e) => setForm({ ...form, precioVenta: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Costo</label>
+                <input type="number" step="0.01" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Stock Minimo</label>
+                <input type="number" value={form.stockMinimo} onChange={(e) => setForm({ ...form, stockMinimo: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Tasa IVA</label>
+                <input type="number" step="0.01" value={form.tasaIva} onChange={(e) => setForm({ ...form, tasaIva: e.target.value })} className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Clave SAT</label>
+                <input value={form.claveSat} onChange={(e) => setForm({ ...form, claveSat: e.target.value })} placeholder="01010101" className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1 placeholder:text-pos-muted/40" />
+              </div>
+              <div>
+                <label className="text-xs text-pos-muted">Unidad SAT</label>
+                <input value={form.unidadSat} onChange={(e) => setForm({ ...form, unidadSat: e.target.value })} placeholder="H87" className="w-full bg-pos-bg border border-slate-700 rounded-lg px-3 py-2 text-pos-text text-sm mt-1 placeholder:text-pos-muted/40" />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-pos-muted hover:text-pos-text cursor-pointer">Cancelar</button>
+              <button onClick={handleSave} disabled={saving || !form.nombre || !form.precioVenta} className="px-4 py-2 bg-pos-blue text-white rounded-lg text-sm hover:bg-pos-blue/80 disabled:opacity-50 transition-colors cursor-pointer">
+                {saving ? "Guardando..." : editingId ? "Actualizar" : "Crear"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
