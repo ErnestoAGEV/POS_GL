@@ -3,6 +3,7 @@ import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { createVentaSchema } from "../schemas/validation.js";
 import { validateBody } from "../utils/validate.js";
+import { logAudit } from "../utils/audit.js";
 
 export async function ventasRoutes(app: FastifyInstance) {
   // POST /ventas — receive a sale from a terminal
@@ -128,6 +129,14 @@ export async function ventasRoutes(app: FastifyInstance) {
           }))
         );
       }
+
+      await logAudit({
+        usuarioId: body.usuarioId,
+        accion: "crear",
+        entidad: "venta",
+        entidadId: venta.id,
+        descripcion: `Venta ${body.folio} por $${body.total}`,
+      });
 
       return { id: venta.id, status: "synced" };
     },

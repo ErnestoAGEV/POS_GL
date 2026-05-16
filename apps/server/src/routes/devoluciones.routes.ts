@@ -3,6 +3,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import { createDevolucionSchema } from "../schemas/validation.js";
 import { validateBody } from "../utils/validate.js";
+import { logAudit } from "../utils/audit.js";
 
 export async function devolucionesRoutes(app: FastifyInstance) {
   // POST /devoluciones
@@ -96,6 +97,14 @@ export async function devolucionesRoutes(app: FastifyInstance) {
           .set({ estado: "cancelada" })
           .where(eq(schema.ventas.id, ventaId));
       }
+
+      await logAudit({
+        usuarioId: request.user!.userId,
+        accion: "crear",
+        entidad: "devolucion",
+        entidadId: devolucion.id,
+        descripcion: `Devolucion ${folio} por $${total} - ${motivo}`,
+      });
 
       return devolucion;
     },

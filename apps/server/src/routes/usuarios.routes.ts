@@ -5,6 +5,7 @@ import { db, schema } from "../db/index.js";
 import { requireAuth } from "../middleware/require-auth.js";
 import { requireAdmin } from "../middleware/require-admin.js";
 import { parsePagination, buildPaginatedResponse } from "../utils/pagination.js";
+import { logAudit } from "../utils/audit.js";
 
 const USER_FIELDS = {
   id: schema.usuarios.id,
@@ -128,6 +129,14 @@ export async function usuariosRoutes(app: FastifyInstance) {
           createdAt: schema.usuarios.createdAt,
         });
 
+      await logAudit({
+        usuarioId: request.user!.userId,
+        accion: "crear",
+        entidad: "usuario",
+        entidadId: created.id,
+        descripcion: `Usuario ${created.username} (${created.rol}) creado`,
+      });
+
       return reply.status(201).send(created);
     }
   );
@@ -218,6 +227,14 @@ export async function usuariosRoutes(app: FastifyInstance) {
         .update(schema.usuarios)
         .set({ activo: false })
         .where(eq(schema.usuarios.id, id));
+
+      await logAudit({
+        usuarioId: request.user!.userId,
+        accion: "desactivar",
+        entidad: "usuario",
+        entidadId: id,
+        descripcion: `Usuario ${existing.username} desactivado`,
+      });
 
       return reply.status(204).send();
     }

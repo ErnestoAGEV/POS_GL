@@ -72,7 +72,20 @@ await app.register(tarjetasRegaloRoutes);
 await app.register(reportesRoutes);
 
 app.get("/health", async () => {
-  return { status: "ok", timestamp: new Date().toISOString() };
+  let dbOk = false;
+  try {
+    const { db } = await import("./db/index.js");
+    const { sql } = await import("drizzle-orm");
+    await db.execute(sql`SELECT 1`);
+    dbOk = true;
+  } catch { /* db unreachable */ }
+
+  return {
+    status: dbOk ? "ok" : "degraded",
+    timestamp: new Date().toISOString(),
+    database: dbOk ? "connected" : "unreachable",
+    version: "0.1.0",
+  };
 });
 
 try {

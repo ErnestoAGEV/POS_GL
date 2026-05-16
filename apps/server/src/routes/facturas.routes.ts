@@ -10,6 +10,7 @@ import {
 import { generateInvoiceHtml } from "../services/cfdi-pdf.service.js";
 import { createFacturaSchema, cancelarFacturaSchema } from "../schemas/validation.js";
 import { validateBody } from "../utils/validate.js";
+import { logAudit } from "../utils/audit.js";
 
 export async function facturasRoutes(app: FastifyInstance) {
   // POST /facturas — create invoice with CFDI XML generation
@@ -222,6 +223,14 @@ export async function facturasRoutes(app: FastifyInstance) {
         })
         .returning();
 
+      await logAudit({
+        usuarioId: request.user!.userId,
+        accion: "crear",
+        entidad: "factura",
+        entidadId: factura.id,
+        descripcion: `Factura ${factura.folioSat} UUID:${timbrado.uuid} $${total}`,
+      });
+
       return factura;
     },
   });
@@ -371,6 +380,14 @@ export async function facturasRoutes(app: FastifyInstance) {
         .update(schema.facturas)
         .set({ estado: "cancelada" })
         .where(eq(schema.facturas.id, id));
+
+      await logAudit({
+        usuarioId: request.user!.userId,
+        accion: "cancelar",
+        entidad: "factura",
+        entidadId: id,
+        descripcion: `Factura cancelada UUID:${factura.uuidFiscal} motivo:${motivo}`,
+      });
 
       return { status: "cancelada" };
     },
