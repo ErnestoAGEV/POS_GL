@@ -28,6 +28,7 @@ import {
   Settings,
 } from "lucide-react";
 import { getToken, setToken, api } from "@/lib/api";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -74,6 +75,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       const items = Array.isArray(data) ? data : data.data || [];
       setNotifications(items.slice(0, 10));
     }).catch(() => {});
+
+    // Connect to real-time socket
+    const socket = connectSocket();
+    socket.on("notification", (payload: any) => {
+      setNotifications((prev) => [
+        { id: Date.now(), accion: payload.tipo, entidad: payload.titulo, descripcion: payload.mensaje, fecha: payload.timestamp },
+        ...prev.slice(0, 9),
+      ]);
+    });
+
+    return () => {
+      socket.off("notification");
+      disconnectSocket();
+    };
   }, [router]);
 
   const handleLogout = () => {

@@ -28,6 +28,7 @@ import { apartadosRoutes } from "./routes/apartados.routes.js";
 import { tarjetasRegaloRoutes } from "./routes/tarjetas-regalo.routes.js";
 import { reportesRoutes } from "./routes/reportes.routes.js";
 import { configuracionRoutes } from "./routes/configuracion.routes.js";
+import { initNotifications } from "./utils/notify.js";
 
 const app = Fastify({
   logger: true,
@@ -55,6 +56,7 @@ app.addHook("onSend", async (request, reply) => {
 });
 
 await app.register(socketioPlugin);
+initNotifications(app);
 
 await app.register(errorHandler);
 await app.register(authPlugin);

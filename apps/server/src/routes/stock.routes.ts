@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { eq, and, sql, lte } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
+import { emitNotification } from "../utils/notify.js";
 
 export async function stockRoutes(app: FastifyInstance) {
   // GET /stock/alerts-global — products below minimum across all branches
@@ -143,6 +144,22 @@ export async function stockRoutes(app: FastifyInstance) {
           productoId,
           sucursalId,
           cantidad,
+        });
+      }
+
+      // Check if stock is now below minimum
+      const [producto] = await db
+        .select({ nombre: schema.productos.nombre, stockMinimo: schema.productos.stockMinimo })
+        .from(schema.productos)
+        .where(eq(schema.productos.id, productoId))
+        .limit(1);
+
+      if (producto && producto.stockMinimo > 0 && cantidad <= producto.stockMinimo) {
+        emitNotification({
+          tipo: "stock_bajo",
+          titulo: "Stock bajo",
+          mensaje: `${producto.nombre} tiene ${cantidad} unidades (min: ${producto.stockMinimo})`,
+          datos: { productoId, sucursalId, cantidad, stockMinimo: producto.stockMinimo },
         });
       }
 

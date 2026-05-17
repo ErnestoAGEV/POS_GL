@@ -4,6 +4,7 @@ import { db, schema } from "../db/index.js";
 import { createVentaSchema } from "../schemas/validation.js";
 import { validateBody } from "../utils/validate.js";
 import { logAudit } from "../utils/audit.js";
+import { emitNotification } from "../utils/notify.js";
 
 export async function ventasRoutes(app: FastifyInstance) {
   // POST /ventas — receive a sale from a terminal
@@ -136,6 +137,13 @@ export async function ventasRoutes(app: FastifyInstance) {
         entidad: "venta",
         entidadId: venta.id,
         descripcion: `Venta ${body.folio} por $${body.total}`,
+      });
+
+      emitNotification({
+        tipo: "venta",
+        titulo: "Nueva venta",
+        mensaje: `Venta ${body.folio} por $${body.total.toFixed(2)}`,
+        datos: { ventaId: venta.id, folio: body.folio, total: body.total },
       });
 
       return { id: venta.id, status: "synced" };
