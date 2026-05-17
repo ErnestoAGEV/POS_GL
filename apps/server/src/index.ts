@@ -27,6 +27,7 @@ import { devolucionesRoutes } from "./routes/devoluciones.routes.js";
 import { apartadosRoutes } from "./routes/apartados.routes.js";
 import { tarjetasRegaloRoutes } from "./routes/tarjetas-regalo.routes.js";
 import { reportesRoutes } from "./routes/reportes.routes.js";
+import { configuracionRoutes } from "./routes/configuracion.routes.js";
 
 const app = Fastify({
   logger: true,
@@ -78,6 +79,7 @@ await app.register(devolucionesRoutes);
 await app.register(apartadosRoutes);
 await app.register(tarjetasRegaloRoutes);
 await app.register(reportesRoutes);
+await app.register(configuracionRoutes);
 
 app.get("/health", async () => {
   let dbOk = false;

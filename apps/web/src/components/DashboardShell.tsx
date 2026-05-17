@@ -25,6 +25,7 @@ import {
   Monitor,
   RotateCcw,
   Bell,
+  Settings,
 } from "lucide-react";
 import { getToken, setToken, api } from "@/lib/api";
 
@@ -49,6 +50,7 @@ const navItems = [
   { href: "/usuarios", icon: UserCog, label: "Usuarios", admin: true },
   { href: "/sucursales", icon: Building2, label: "Sucursales", admin: true },
   { href: "/terminales", icon: Monitor, label: "Terminales", admin: true },
+  { href: "/configuracion", icon: Settings, label: "Configuracion", admin: true },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

@@ -229,4 +229,10 @@ export const api = {
   devoluciones: {
     list: () => request<any>("/devoluciones"),
   },
+  configuracion: {
+    get: () => request<Record<string, { valor: string; descripcion: string | null }>>("/configuracion"),
+    update: (data: Record<string, string>) =>
+      request<any>("/configuracion", { method: "PUT", body: JSON.stringify(data) }),
+    seed: () => request<any>("/configuracion/seed", { method: "POST" }),
+  },
 };

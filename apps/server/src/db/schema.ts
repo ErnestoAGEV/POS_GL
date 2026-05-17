@@ -437,3 +437,14 @@ export const bitacora = pgTable("bitacora", {
   fecha: timestamp("fecha", { withTimezone: true }).notNull().defaultNow(),
   ...syncColumns,
 });
+
+export const configuracion = pgTable("configuracion", {
+  id: serial("id").primaryKey(),
+  clave: text("clave").notNull().unique(),
+  valor: text("valor").notNull(),
+  descripcion: text("descripcion"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdateFn(() => new Date()),
+});
